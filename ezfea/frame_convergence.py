@@ -16,6 +16,7 @@ import shutil
 
 from .convergence import run_refinement, relative_change
 from .frame_benchmarks import STUDIES, create_step, case_from_step, geometry_definition_sha256
+from .stress_probes import frame_stress_probes, RECOVERY
 
 
 DEFAULT_MESHES_MM = (14., 10., 7.)
@@ -251,7 +252,8 @@ def run_frame_convergence(output_root="runs/frame_convergence", *,
         case=replace(case_from_step(spec,step,mesh_size_mm=sizes[0]),
                      element_type=element_type)
         raw=run_refinement(case,frame/"refinement",
-                           sizes_mm=sizes,displacement_tolerance=displacement_tolerance)
+                           sizes_mm=sizes,displacement_tolerance=displacement_tolerance,
+                           fixed_stress_probes=frame_stress_probes(spec))
         base.append({
             "key":spec.key,
             "definition_sha256":geometry_definition_sha256(spec),
