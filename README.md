@@ -53,6 +53,18 @@ EZ-FEA now accepts an explicit `Analysis(..., element_type="C3D10")` option alon
 
 The interpolation order is independent of mesh density. A passing solve or apparently stable displacement is **not** engineering validation, and high peak stress at idealized fixed edges may remain mesh sensitive. C3D10 boundary traction integration currently assumes planar triangular surfaces; its curved-CAD loading should be upgraded to isoparametric quadrature before extending this pathway to curved parts.
 
+
+### First measured element-order comparison (October 20, 2026)
+
+[**Successful C3D4 vs C3D10 real-physics run**](https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/39499859849): 12 native solves; both element types used the **same STEP file bytes** and identical 14/10/7 mm requested meshes, 250 N load and support definition.
+
+| Frame | C3D4 last displacement change (10 → 7 mm) | C3D10 last displacement change (10 → 7 mm) |
+|---|---:|---:|
+| Rectangular frame, lateral load | 23.371% | **1.128%** |
+| Braced rectangle, lateral load | 3.965% | **0.303%** |
+
+At the 7 mm requested mesh size, rectangular-frame maximum displacement was **0.0194903 mm** using C3D4 versus **0.0254805 mm** using C3D10. Both C3D10 cases met the limited **5% displacement-change criterion at both refinement steps**; neither met the separate peak-stress sensitivity screening criterion. Quadratic interpolation improved the observed displacement mesh stability in these examples, **not independently proven physical accuracy**. The existing native-only benchmark result bridge continues to publish the original fixed-case records without altering the browser visual design.
+
 ## Six-frame automatic mesh-convergence experiment
 
 [**Real 3D Frame Mesh Convergence — GitHub Actions**](https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/frame-convergence.yml) runs **18 genuine Gmsh + CalculiX analyses**: all six repeatable frame load cases at **14, 10, and 7 mm** requested tetrahedral mesh sizes. Geometry, support faces, load vectors and nominal material are held constant within each three-grid series.
