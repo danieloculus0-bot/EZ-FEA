@@ -49,6 +49,8 @@ def compare_element_studies(linear, quadratic):
             "C3D10_tetrahedra":new["elements"],
             "C3D4_nodes":old["nodes"],
             "C3D10_nodes":new["nodes"],
+            "C3D4_fixed_coordinate_stress_trends":old.get("fixed_coordinate_stress_trends"),
+            "C3D10_fixed_coordinate_stress_trends":new.get("fixed_coordinate_stress_trends"),
             "C3D4_stress_band_trends":old.get("stress_band_trends"),
             "C3D10_stress_band_trends":new.get("stress_band_trends"),
             "C3D4_load_stress_band_trends":old.get("load_stress_band_trends"),
@@ -146,6 +148,40 @@ def to_markdown(result):
             "Peaks outside the fixture bands are diagnostic only. A smaller change",
             "away from the support suggests spatial localization of sensitivity;",
             "it does not prove a stress singularity or validate the load model.",
+        ])
+    if any(r.get("C3D10_fixed_coordinate_stress_trends") for r in result["cases"]):
+        lines.extend([
+            "",
+            "### Stress at identical physical XYZ probe coordinates",
+            "",
+            "Native CalculiX Gauss tensors are averaged per host element then evaluated",
+            "as a piecewise-constant recovery at the same XYZ (mm) in each grid.",
+            "This is not an extrapolated stress peak or exact C3D10 point interpolation.",
+            "Probe positions that approach an element boundary are flagged.",
+            "",
+            "| Case | Probe | XYZ mm | C3D4 last Δσ | C3D10 last Δσ | C3D10 probe quality |",
+            "|---|---|---|---:|---:|---|",
+        ])
+        for row in result["cases"]:
+            old={x["name"]:x for x in row.get("C3D4_fixed_coordinate_stress_trends") or []}
+            new={x["name"]:x for x in row.get("C3D10_fixed_coordinate_stress_trends") or []}
+            if old.keys()!=new.keys() or not new:
+                raise ValueError(row["key"]+": fixed-location stress probe evidence mismatch")
+            for name,reading in new.items():
+                before=old[name]
+                if before["coordinate_mm"]!=reading["coordinate_mm"]:
+                    raise ValueError(row["key"]+": probe XYZ differs between element orders")
+                xyz=", ".join(f"{v:.2f}" for v in reading["coordinate_mm"])
+                lines.append(
+                    f"| {row['key']} | {name} | {xyz} | "
+                    f"{before['last_change_pct']:.3f}% | "
+                    f"{reading['last_change_pct']:.3f}% | {reading['observation']} |"
+                )
+        lines.extend([
+            "",
+            "The same model coordinate is used on every mesh. Element-average",
+            "integration-point stress is an approximate field recovery and can",
+            "remain mesh-sensitive near fused joints and load-bearing interfaces.",
         ])
     lines.extend([
         "",
