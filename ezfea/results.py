@@ -92,11 +92,13 @@ def max_displacement_mm(dat_file: Path):
 
 def summarize_dat(dat_file: Path, applied_force_n, yield_mpa, *, expected_nodes=None,
                   expected_elements=None, applied_force_scale_n=None,
-                  applied_nodal_forces_n=None):
+                  applied_nodal_forces_n=None, element_type="C3D4"):
     """Provenance-aware, deliberately limited static analysis summary.
 
     A computed ratio against a nominal yield is not a validated safety claim.
     """
+    if element_type not in ("C3D4","C3D10"):
+        raise ValueError("Unknown element type in CalculiX results.")
     raw = read_dat(dat_file)
     missing = [name for name in ("displacement", "stress", "reactions")
                if raw[name] is None]
@@ -133,7 +135,10 @@ def summarize_dat(dat_file: Path, applied_force_n, yield_mpa, *, expected_nodes=
     return {
         "source": dat_file.name,
         "stress_type": "integration_point_cauchy",
-        "element_type_note": "First-order C3D4 stress: mesh refinement required.",
+        "element_type":element_type,
+        "element_type_note": ("First-order C3D4 can be stiff in bending; mesh verification required."
+                              if element_type=="C3D4" else
+                              "Quadratic C3D10: multiple Gauss points; peaks and convergence still require validation."),
         "max_displacement_mm": u_mm,
         "max_displacement_node_id": int(peak_u[0]),
         "max_von_mises_mpa": vm_mpa,
