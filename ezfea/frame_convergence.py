@@ -141,10 +141,10 @@ def report_markdown(report):
         "This is NOT a stress-convergence guarantee.",
         "",
         "> This report is NOT solver validation, only sensitivity to meshing. Global peak",
-        "> first-order C3D4 stress may change substantially at fully fixed corners,",
-        "> and first-order tets can be overly stiff in bending. No physical",
-        "> test, higher-order element, independent benchmark, or qualified",
-        "> engineer has validated these designs. Not for engineering sign-off.",
+        "> stress may change substantially at fully fixed corners. First-order C3D4",
+        "> tetrahedra may be overly stiff in bending; quadratic C3D10 does not",
+        "> eliminate stress singularities. No physical test, independent benchmark,",
+        "> or qualified engineer has validated these designs. Not for engineering sign-off.",
     ])
     return "\n".join(lines)+"\n"
 
