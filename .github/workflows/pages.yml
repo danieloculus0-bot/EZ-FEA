@@ -6,21 +6,63 @@ on:
       - "web/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Frame Specimen Physics Suite"]
+    types: [completed]
+
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
+
 concurrency:
   group: pages
   cancel-in-progress: false
+
 jobs:
   deploy:
+    if: >-
+      ${{ github.event_name != 'workflow_run' ||
+          (github.event.workflow_run.conclusion == 'success' &&
+           github.event.workflow_run.head_branch == 'main' &&
+           github.event.workflow_run.head_repository.full_name == github.repository) }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Overlay latest successful native physics evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
+          GH_EVENT_NAME: ${{ github.event_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          runs=""
+          if [[ "$GH_EVENT_NAME" == "workflow_run" && -n "$TRIGGER_RUN_ID" ]]; then
+            runs="$TRIGGER_RUN_ID"
+          else
+            runs="$(gh run list --repo "$GITHUB_REPOSITORY" \
+              --workflow "Frame Specimen Physics Suite" \
+              --branch main --status success --limit 12 \
+              --json databaseId --jq '.[].databaseId' || true)"
+          fi
+          found=0
+          for run in $runs; do
+            if gh run download "$run" --repo "$GITHUB_REPOSITORY" \
+                 --name EZ-FEA-web-physics-data --dir web/data; then
+              echo "Loaded verified physics data from run $run"
+              found=1
+              break
+            fi
+          done
+          if [[ "$found" == 0 ]]; then
+            echo "No published native dataset yet; keeping checked-in fallback."
+          fi
+          python -m json.tool web/data/frame_studies.json >/dev/null
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload static app
