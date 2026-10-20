@@ -8,11 +8,17 @@ from ezfea.frame_benchmarks import STUDIES, FrameSpec, geometry_definition_sha25
 
 
 class FrameSpecTests(unittest.TestCase):
-    def test_three_distinct_named_studies(self):
-        self.assertEqual(len(STUDIES),3)
+    def test_six_distinct_named_studies(self):
+        self.assertEqual(len(STUDIES),6)
         self.assertEqual(len({s.key for s in STUDIES}),3)
         self.assertEqual([s.construction for s in STUDIES],
-                         ["portal","rectangle","braced"])
+                         ["portal","rectangle","braced","portal","rectangle","braced"])
+
+    def test_matched_vertical_load_cases(self):
+        self.assertEqual(STUDIES[4].load_n, STUDIES[5].load_n)
+        self.assertEqual(STUDIES[0].load_n, STUDIES[4].load_n)
+        self.assertEqual(STUDIES[4].construction, "rectangle")
+        self.assertEqual(STUDIES[5].construction, "braced")
 
     def test_repeatable_definition_hash(self):
         a=STUDIES[1]
