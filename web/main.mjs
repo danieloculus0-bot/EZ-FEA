@@ -117,7 +117,7 @@ function onPick(which,location){
 function downloadSetup(){
   if(!currentFile)return;
   const preset=PRESETS[byId("material").value];
-  const document={
+  const setupPayload={
     schema:"ezfea.web.setup.v1",
     source_file:currentFile.name,
     source_file_size_bytes:currentFile.size,
@@ -132,7 +132,7 @@ function downloadSetup(){
     nominal_yield_mpa:preset.yield,
     important:"Preview coordinates and markers are not Gmsh CAD surface IDs. Recheck connections and units in the 3D solver. Keep original CAD source file."
   };
-  const data=new Blob([JSON.stringify(document,null,2)],{type:"application/json"});
+  const data=new Blob([JSON.stringify(setupPayload,null,2)],{type:"application/json"});
   const url=URL.createObjectURL(data);
   const a=document.createElement("a");
   a.href=url;
