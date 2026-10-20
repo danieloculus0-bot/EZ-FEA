@@ -16,7 +16,7 @@ py -m venv .venv
 .\.venv\Scripts\python.exe app.py
 ~~~
 
-Choose a STEP solid, its fully fixed connection face, its loaded face and total XYZ force. Click RUN ANALYSIS. Real solver files and records go into the runs directory. View the analysis.frd result with free CalculiX GraphiX (cgx).
+Click Demo beam for a 100 x 10 x 10 mm cantilever with automatically selected end faces, or choose your own STEP solid and set its fully fixed connection face, loaded face and total XYZ force. Click RUN ANALYSIS. Real solver files and records go into the runs directory. View the analysis.frd result with free CalculiX GraphiX (cgx).
 
 ## Scope
 
@@ -25,7 +25,7 @@ Choose a STEP solid, its fully fixed connection face, its loaded face and total 
 - Force distributed over a selected surface by triangle area.
 - Single-material, linear elastic, static CalculiX solves.
 - N/mm/MPa units. Model STEP dimensions must already be millimeters.
-- Recorded CAD SHA256, inputs, mesh statistics, solver logs and native result files.
+- Recorded original STEP model and SHA256, inputs, mesh statistics, solver logs and native result files.
 - BEAN handoff as JSON. Optional verified BEAN Core log-note inbox interface if EZFEA_BEAN_INBOX is set to the same location as BEAN_INBOX_DIR. BEAN logs a factual run record, not an engineering review.
 - Automated tests and optional full solver smoke test.
 
