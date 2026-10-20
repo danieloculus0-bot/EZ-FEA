@@ -13,6 +13,7 @@ _NUM = r"[-+]?(?:\d+\.?\d*|\.\d+)(?:[eEdD][-+]?\d+)?"
 _DISPLACEMENT = re.compile(r"^\s*displacements\s*\(vx,vy,vz\)", re.I)
 _STRESS = re.compile(r"^\s*stresses\s*\(elem,\s*integ\.pnt\.,\s*sxx,syy,szz,sxy,sxz,syz\)", re.I)
 _REACTION = re.compile(r"^\s*forces\s*\(fx,fy,fz\)\s*for set\b", re.I)
+_COORDINATE = re.compile(r"^\s*global coordinates\s*\(\s*elem,\s*integ\.pnt\.,\s*x,y,z\s*\)", re.I)
 
 
 def _values(tokens, count):
@@ -42,8 +43,8 @@ def read_dat(dat_file: Path):
     This parser is deliberately scoped to CalculiX's documented ASCII format.
     """
     if not dat_file.is_file():
-        return {"displacement": None, "stress": None, "reactions": None}
-    result = {"displacement": None, "stress": None, "reactions": None}
+        return {"displacement": None, "stress": None, "reactions": None, "coordinates": None}
+    result = {"displacement": None, "stress": None, "reactions": None, "coordinates": None}
     kind = None
     active = []
     for line in dat_file.read_text(encoding="utf-8", errors="replace").splitlines():
@@ -63,15 +64,21 @@ def read_dat(dat_file: Path):
                 result[kind] = active
             kind, active = "reactions", []
             continue
+        if _COORDINATE.search(line):
+            if kind is not None and active:
+                result[kind] = active
+            kind, active = "coordinates", []
+            continue
         if kind is None:
             continue
         if not line.strip():
             # CalculiX inserts empty lines after headers and between tables.
             continue
         tokens = line.split()
-        expected = 8 if kind == "stress" else 4
+        expected = {"stress": 8, "coordinates": 5,
+                    "displacement": 4, "reactions": 4}[kind]
         values = _values(tokens, expected)
-        if values is not None and tokens[0].isdigit() and (kind != "stress" or tokens[1].isdigit()):
+        if values is not None and tokens[0].isdigit() and (kind not in ("stress","coordinates") or tokens[1].isdigit()):
             active.append(values)
             continue
         if active:
