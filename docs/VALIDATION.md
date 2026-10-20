@@ -138,3 +138,26 @@ C3D10's finest-grid cantilever response differed by **0.192% in maximum displace
 **Method limitations:** The affine Gauss-tensor field can be extrapolated within an element outside the convex hull of integration points; stresses are not forced continuous across elements; curved ten-node tetrahedral geometry needs a verified nonlinear coordinate mapping. The analytical beam assumes slender small-deflection behavior, while real CalculiX models have finite cross sections, end-face tractions and full face constraints. Good agreement for these basic load cases must not be generalized to welds, bolts, contact, yielding, complex geometry or certified design signoff.
 
 **Next tests:** independent torsion and transverse shear references, spatial stress error checks on curved CAD, physically distributed load and fixture verification, and mechanical joint/contact physics.
+
+## Prescribed surface traction and eccentric load introduction — October 20, 2026
+
+[**Successful native 12-solve Gmsh/CalculiX experiment**](https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/39507346099) comparing physically different load-introduction patterns. The identical 100 × 10 × 10 mm homogeneous elastic bar has a fully restrained x=0 face and a 100 N +X total force on the x=100 end face. Both C3D4 and C3D10 formulations were solved at requested mesh sizes 10 and 7 mm.
+
+**Implemented mechanics:** The existing whole-face uniform total-force distribution remains available as the FaceLoad type. The new FaceFootprintLoad(face, force_n, center_mm, spread_mm) specifies a prescribed **Gaussian traction intensity envelope** over the selected CAD face, with total force in N, chosen 3D center in mm and characteristic Gaussian spread in mm. This is mathematically *not* Hertz pressure, hard contact, frictional bearing, a bolt load or local plastic deformation. The actual resultant moves with geometric clipping of the Gaussian to the CAD face and is **integrated and reported**, rather than assumed equal to the requested center.
+
+Surface integration uses real meshed face T3 or T6 shape functions and 7-point degree-five triangle quadrature; T6 integration evaluates the isoparametric surface Jacobian at each point, including curved quadratic edges. The consistent equivalent nodal force vector is normalized to the prescribed resultant and tested for both **force conservation and first-moment conservation** about the model origin. Positive/negative equivalent nodal shares are possible with quadratic element shape functions. Source coordinates, resultant center, effective Gaussian weighted area, element-order provenance and moment audit are retained in each native case.json file.
+
+**Independent solver checks:** The CalculiX RF vectors at support nodes are corrected for any directly applied loads on those same nodes; the global reaction moment about the model origin is compared to the moment of all applied CLOADs. A case is marked completed only when both force and moment equilibrium residuals are at most 1% of their respective reference scales. Thus a resultant-force-balanced but torque-unbalanced setup is marked needs_review. All 12 actual benchmark solves passed the two checks.
+
+| 7 mm C3D10, fixed 100 N total force | Whole-face uniform | Centered Gaussian, σ=2.5 mm | Eccentric Gaussian, requested z=7.5 mm |
+|---|---:|---:|---:|
+| Actual resultant z position (mm) | 5.0000 | 5.0000 | **6.7931** |
+| Applied bending moment My about origin (N·mm) | 500.0000 | 499.9966 | **679.3116** |
+| Maximum displacement (mm) | 0.0004986833 | 0.0005200367 | **0.005460412** |
+| Native max integration-point von Mises (MPa) | 1.0284 | 1.9444 | **2.4391** |
+
+The Gaussian pad produces a much larger local peak stress even when centered. When eccentric, it applies both the same 100 N resultant and an additional moment, producing bending as intended. CalculiX captured the response; reaction moment residuals for all cases were tiny relative to the check reference. These results establish **working load-position sensitivity and numerical static equilibrium**, not experimental validation of a physical pad.
+
+**Limitations and next work:** The Gaussian envelope is a prescribed force distribution, not solved interface contact; actual steel/bolt/pad pressure can vary with elastic deformation and contact geometry. No contact pressure cutoff or friction is computed. Numerical surface integration needs verification under highly concentrated loads and narrow spreads relative to the surface mesh. Meaningful physical engineering cases require measured/justified contact geometry, adequate local mesh refinement, actual material models, and independent checks on stresses near loaded edges. This experimental load model is not suitable for certified strength sign-off. Future work should add a proper normal-pressure boundary condition, localized mesh controls at footprint edges, and two-body contact/bearing connections.
+
+Developer/run command: with Gmsh/CalculiX installed, run `python -m ezfea.load_introduction_benchmarks --out runs/footprint_experiment --meshes 10 7`. The [native workflow](https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/load-introduction.yml) automatically runs tests and archives all native geometry, mesh, deck, result, response and equilibrium artifacts.
