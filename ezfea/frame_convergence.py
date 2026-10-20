@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import argparse
 import csv
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import datetime, timezone
 import json
 import math
@@ -110,11 +110,11 @@ def report_markdown(report):
     """A compact human-readable engineering report with source limitations."""
     def fmt(value): return f"{value:.5g}"
     lines=[
-        "# EZ-FEA — Six-frame, three-grid native solver refinement",
+        "# EZ-FEA — Native frame three-grid solver refinement",
         "",
         f"Run date (UTC): {report['generated_utc']}",
         "",
-        "These results come from actual native Gmsh + CalculiX solves, not BEAN estimates.",
+        f"Element type: {report['element_type']}. These are real Gmsh + CalculiX solves, not BEAN estimates.",
         "All six cases retain the same STEP geometry, material, supports and total force",
         "within each three-grid comparison; only requested mesh size changes.",
         "",
@@ -152,8 +152,11 @@ def run_frame_convergence(output_root="runs/frame_convergence", *,
                           sizes_mm=DEFAULT_MESHES_MM,
                           displacement_tolerance=.05,
                           peak_stress_tolerance=.10,
-                          specimens=STUDIES):
+                          specimens=STUDIES,
+                          element_type="C3D4"):
     """Generate each STEP once, run each with 3+ grids, record full provenance."""
+    if element_type not in ("C3D4", "C3D10"):
+        raise ValueError("Unsupported element type.")
     sizes=tuple(float(x) for x in sizes_mm)
     if len(sizes)<3 or any(not math.isfinite(v) or v<=0 for v in sizes) or \
             any(x<=y for x,y in zip(sizes,sizes[1:])):
@@ -166,7 +169,8 @@ def run_frame_convergence(output_root="runs/frame_convergence", *,
     for spec in specimens:
         frame=root/spec.key
         step=create_step(spec,frame/"cad"/(spec.key+".step"))
-        case=case_from_step(spec,step,mesh_size_mm=sizes[0])
+        case=replace(case_from_step(spec,step,mesh_size_mm=sizes[0]),
+                     element_type=element_type)
         raw=run_refinement(case,frame/"refinement",
                            sizes_mm=sizes,displacement_tolerance=displacement_tolerance)
         base.append({
@@ -183,6 +187,7 @@ def run_frame_convergence(output_root="runs/frame_convergence", *,
         "schema":"ezfea.frame_convergence.v1",
         "generated_utc":datetime.now(timezone.utc).isoformat(),
         "mesh_sizes_mm":list(sizes),
+        "element_type":element_type,
         "displacement_threshold_pct":100*displacement_tolerance,
         "peak_stress_screen_pct":100*peak_stress_tolerance,
         "studies":rows,
@@ -194,7 +199,7 @@ def run_frame_convergence(output_root="runs/frame_convergence", *,
             "limited_sensitivity_at_checked_mesh_sizes"
             if all(r["peak_stress_observation"]=="limited_sensitivity_at_checked_mesh_sizes" for r in rows)
             else "at_least_one_peak_remains_mesh_sensitive"),
-        "physics":"linear static, one Boolean-fused solid, C3D4; fixed bottom faces",
+        "physics":f"linear static, one Boolean-fused solid, {element_type}; fixed bottom faces",
         "engineering_validation":"not_established",
         "notice":"Mesh trends and equilibrated solver results are not independent model validation or a certified factor of safety."
     }
@@ -202,12 +207,12 @@ def run_frame_convergence(output_root="runs/frame_convergence", *,
     (root/"CONVERGENCE_REPORT.md").write_text(report_markdown(report),encoding="utf-8")
     with (root/"convergence_summary.csv").open("w",newline="",encoding="utf-8") as fp:
         writer=csv.writer(fp)
-        writer.writerow(["case","requested_mesh_mm","nodes","tetrahedra",
+        writer.writerow(["case","element_type","requested_mesh_mm","nodes","tetrahedra",
                          "max_displacement_mm","peak_von_mises_mpa",
                          "force_balance_relative_error"])
         for row in rows:
             for i,size in enumerate(row["mesh_sizes_mm"]):
-                writer.writerow([row["key"],size,row["nodes"][i],row["elements"][i],
+                writer.writerow([row["key"],element_type,size,row["nodes"][i],row["elements"][i],
                                  row["max_displacements_mm"][i],row["peak_von_mises_mpa"][i],
                                  row["equilibrium_relative_errors"][i]])
     return report
@@ -216,13 +221,17 @@ def run_frame_convergence(output_root="runs/frame_convergence", *,
 def main():
     parser=argparse.ArgumentParser(description="Real Gmsh/CalculiX frame mesh-convergence suite")
     parser.add_argument("--out",default="runs/frame_convergence")
+    parser.add_argument("--element-type",choices=("C3D4","C3D10"),default="C3D4")
+    parser.add_argument("--cases",nargs="+",choices=[s.key for s in STUDIES])
     parser.add_argument("--meshes",nargs="+",type=float,default=DEFAULT_MESHES_MM)
     parser.add_argument("--displacement-tolerance",type=float,default=.05)
     parser.add_argument("--peak-stress-tolerance",type=float,default=.10)
     args=parser.parse_args()
+    selected=tuple(s for s in STUDIES if args.cases is None or s.key in args.cases)
     report=run_frame_convergence(args.out,sizes_mm=args.meshes,
         displacement_tolerance=args.displacement_tolerance,
-        peak_stress_tolerance=args.peak_stress_tolerance)
+        peak_stress_tolerance=args.peak_stress_tolerance,
+        specimens=selected, element_type=args.element_type)
     print(report_markdown(report))
     print(f"Saved native evidence in {args.out}")
 
