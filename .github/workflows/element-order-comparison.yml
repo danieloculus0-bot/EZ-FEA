@@ -50,7 +50,8 @@ jobs:
         run: |
           python -m ezfea.frame_convergence --out element_order_studies/C3D10 \
             --element-type C3D10 --meshes 14 10 7 \
-            --cases 02_rectangle_racking 03_braced_racking
+            --cases 02_rectangle_racking 03_braced_racking \
+            --reuse-cad-from element_order_studies/C3D4
       - name: Independently compare matching sources and displacement trends
         run: |
           python -m scripts.compare_element_orders \
