@@ -45,6 +45,14 @@ To add another repeatable simulation, extend `STUDIES` in `ezfea/frame_benchmark
 
 The workflow may also be manually started by a repo maintainer in **Actions → Frame Specimen Physics Suite → Run workflow**. Anonymous GitHub Pages visitors **cannot** launch arbitrary user-uploaded 3D jobs, which would require an authenticated compute service. No tokens or privileged workflow endpoints are embedded in website HTML. See [web/README.md](web/README.md).
 
+## Quadratic C3D10 tetrahedra (experimental)
+
+EZ-FEA now accepts an explicit `Analysis(..., element_type="C3D10")` option alongside its original `"C3D4"` default. The real Gmsh pipeline generates ten-node tetrahedra, converts Gmsh's midside edge order into CalculiX's C3D10 convention, constrains quadratic face nodes, and integrates uniformly distributed total forces using the second-order triangular face shape functions. The CalculiX input deck and result archive identify the actual element type; unknown/mismatched element types are rejected.
+
+**Native solver verification:** `tests/test_integration.py` runs a genuine C3D10 cantilever solve through Gmsh and CalculiX, including stress, deflection and reaction-force checks. The [C3D4 vs C3D10 Native Comparison](https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/element-order-comparison.yml) uses byte-identical STEP geometry, matching fixtures/loads, and 14/10/7 mm grids for a rectangular and braced frame. The workflow archives native solver records and an independent side-by-side comparison report. Use the **latest successful workflow run** for actual observations, rather than assuming a quadratic element must converge.
+
+The interpolation order is independent of mesh density. A passing solve or apparently stable displacement is **not** engineering validation, and high peak stress at idealized fixed edges may remain mesh sensitive. C3D10 boundary traction integration currently assumes planar triangular surfaces; its curved-CAD loading should be upgraded to isoparametric quadrature before extending this pathway to curved parts.
+
 ## Six-frame automatic mesh-convergence experiment
 
 [**Real 3D Frame Mesh Convergence — GitHub Actions**](https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/frame-convergence.yml) runs **18 genuine Gmsh + CalculiX analyses**: all six repeatable frame load cases at **14, 10, and 7 mm** requested tetrahedral mesh sizes. Geometry, support faces, load vectors and nominal material are held constant within each three-grid series.
@@ -89,7 +97,7 @@ Click Demo beam for a 100 x 10 x 10 mm cantilever with automatically selected en
 - BEAN handoff as JSON. Optional verified BEAN Core log-note inbox interface if EZFEA_BEAN_INBOX is set to the same location as BEAN_INBOX_DIR. BEAN logs a factual run record, not an engineering review.
 - Automated tests and optional full solver smoke test.
 
-**Important limits:** only one continuous solid is supported, not a multi-component door assembly. A face restraint is not a real bolt, hinge, bearing, pin, or actuator connection. First-order C3D4 is inaccurate for some bending scenarios; no automatic mesh convergence, contact/ties, nonlinear material law, print orientation effects, built-in result contour viewer, or validated factor of safety. Yield strength is stored for indicative comparison. No fabricated results on failures. A real Gmsh + CalculiX solver smoke test is exercised in GitHub Actions.
+**Important limits:** only one continuous solid is supported, not a multi-component door assembly. A face restraint is not a real bolt, hinge, bearing, pin, or actuator connection. C3D4 bending may be overly stiff and the experimental C3D10 mode is not independently validated; no automatic engineering accuracy certification, contact/ties, nonlinear material law, print orientation effects, built-in result contour viewer, or validated factor of safety. Yield strength is stored for indicative comparison. No fabricated results on failures. A real Gmsh + CalculiX solver smoke test is exercised in GitHub Actions.
 
 Run automated tests:
 
