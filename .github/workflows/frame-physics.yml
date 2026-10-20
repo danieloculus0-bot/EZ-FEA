@@ -11,11 +11,16 @@ on:
       - "ezfea/solver.py"
       - "ezfea/results.py"
       - "ezfea/workflow.py"
+      - "scripts/publish_frame_evidence.py"
       - "tests/test_frame_specimens.py"
       - ".github/workflows/frame-physics.yml"
 
 permissions:
   contents: read
+
+concurrency:
+  group: ezfea-frames-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   frame-fixtures:
@@ -33,8 +38,15 @@ jobs:
           python -m pip install -r requirements.txt
       - name: Verify repeatable frame definitions
         run: python -m unittest discover -s tests -p test_frame_specimens.py -v
-      - name: Solve all three actual 3D frame specimens
+      - name: Solve six actual 3D frame specimens
         run: python -m ezfea.frame_benchmarks --out frame_benchmark_artifacts --mesh-mm 14
+      - name: Publish only verified results as web-ready JSON
+        run: |
+          python -m scripts.publish_frame_evidence \
+            --root frame_benchmark_artifacts \
+            --out frame_publication/frame_studies.json \
+            --run-url "https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --commit "$GITHUB_SHA"
       - name: Print solver summary
         run: cat frame_benchmark_artifacts/suite_summary.json
       - name: Archive modeled solids and complete solver evidence
@@ -44,4 +56,11 @@ jobs:
           name: EZ-FEA-frame-physics-studies
           path: frame_benchmark_artifacts/
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 30
+      - name: Archive verified browser data for automatic Pages deployment
+        uses: actions/upload-artifact@v4
+        with:
+          name: EZ-FEA-web-physics-data
+          path: frame_publication/frame_studies.json
+          if-no-files-found: error
+          retention-days: 90
