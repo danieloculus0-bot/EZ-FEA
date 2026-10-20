@@ -81,3 +81,21 @@ Constrain only degrees of freedom your actual mounting removes. Axis constraints
 are applied to all nodes on the selected face; they are **not** hinge joints or
 actuator elements. Separate physical components and connector physics will need
 their own assembly/contact/connector phase. No default safety claims.
+
+## Verified three-frame solver studies (2026-10-20)
+
+The Python engine now includes a **repeatable real-solver frame suite**, separate from the simplified GitHub Pages browser beam demo:
+
+- `01_portal_vertical`: idealized open-bottom portal under vertical loading.
+- `02_rectangle_racking`: closed unbraced rectangular frame under lateral racking.
+- `03_braced_racking`: matched braced rectangle under the same lateral force.
+
+`ezfea/frame_benchmarks.py` constructs Boolean-fused continuous STEP solids with Gmsh, selects geometry-based face constraints, executes CalculiX, captures source parameters and SHA-256 identities, reports displacement/stress/reaction equilibrium, and checks that the braced specimen deflects less than its matched unbraced case. These three **actual 3D solves passed the October 20 Frame Specimen Physics Suite**. To reproduce with Gmsh and `ccx` installed:
+
+~~~sh
+python -m ezfea.frame_benchmarks --out runs/frame_benchmarks --mesh-mm 14
+~~~
+
+This is **regression evidence, not an independently validated welded-frame benchmark**. The members are fused as one solid; there are no weld beads, joint compliance, hinge pins, actuator connectors, multi-part contact or demonstrated mesh convergence. GitHub Pages remains a separate browser-only beam calculation/CAD preview, **not the server-side 3D CalculiX engine**.
+
+[Portfolio-wide audit](https://github.com/danieloculus0-bot/Axiom_Beta/blob/main/docs/PORTFOLIO_AUDIT_2026-10-20.md).
