@@ -44,7 +44,7 @@ export function sampleMatrix() {
       {id:6,label:"Shaft",grounded:false}],
     rows:[
       [1,2,101,201],[2,3,102,202],[3,4,103,203],[4,5,104,204],[5,6,105,205]
-    ].map(([a,b,f,g],i)=>({joint_id:\`J-\${String(i+1).padStart(3,"0")}\`,
+    ].map(([a,b,f,g],i)=>({joint_id:"J-"+String(i+1).padStart(3,"0"),
       component_a:a,component_b:b,face_a:f,face_b:g,joint_type:"Unassigned",
       joint_confirmation:"not_reviewed",mechanical_model:"unassigned",
       candidate_kind:"sample_only_not_from_cad"}))
