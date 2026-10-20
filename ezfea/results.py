@@ -1,25 +1,143 @@
-"""Conservative CalculiX .dat displacement summary. Missing is never estimated."""
+"""Read CalculiX ASCII .dat results without inventing missing values.
+
+Single-step, linear-static solids only. Values originate from *NODE PRINT and
+*EL PRINT, not extrapolated nodal contour values from a .frd visual.
+"""
+from __future__ import annotations
+
 import math
 import re
 from pathlib import Path
+
 _NUM = r"[-+]?(?:\d+\.?\d*|\.\d+)(?:[eEdD][-+]?\d+)?"
-_ROW = re.compile(rf"^\s*(\d+)\s+({_NUM})\s+({_NUM})\s+({_NUM})\s*$")
+_DISPLACEMENT = re.compile(r"^\s*displacements\s*\(vx,vy,vz\)\b?", re.I)
+_STRESS = re.compile(r"^\s*stresses\s*\(elem,\s*integ\.pnt\.,\s*sxx,syy,szz,sxy,sxz,syz\)", re.I)
+_REACTION = re.compile(r"^\s*forces\s*\(fx,fy,fz\)\s*for set\b", re.I)
+
+
+def _values(tokens, count):
+    """Parse only complete numerical records, including Fortran D exponents."""
+    if len(tokens) != count:
+        return None
+    try:
+        values = [float(token.replace("D", "E").replace("d", "e")) for token in tokens]
+    except ValueError:
+        return None
+    return values if all(math.isfinite(value) for value in values) else None
+
+
+def von_mises_mpa(sxx, syy, szz, sxy, sxz, syz):
+    """3D von Mises equivalent stress from the six Cauchy tensor components."""
+    result = (
+        ((sxx-syy)**2 + (syy-szz)**2 + (szz-sxx)**2) / 2
+        + 3 * (sxy*sxy + sxz*sxz + syz*syz)
+    )
+    return math.sqrt(max(0., result))
+
+
+def read_dat(dat_file: Path):
+    """Return the last printed data block for each requested quantity.
+
+    A missing table is returned as None, never as a manufactured zero.
+    This parser is deliberately scoped to CalculiX's documented ASCII format.
+    """
+    if not dat_file.is_file():
+        return {"displacement": None, "stress": None, "reactions": None}
+    result = {"displacement": None, "stress": None, "reactions": None}
+    kind = None
+    active = []
+    for line in dat_file.read_text(encoding="utf-8", errors="replace").splitlines():
+        lower = line.lower()
+        if _DISPLACEMENT.search(line):
+            if kind is not None and active:
+                result[kind] = active
+            kind, active = "displacement", []
+            continue
+        if _STRESS.search(line):
+            if kind is not None and active:
+                result[kind] = active
+            kind, active = "stress", []
+            continue
+        if _REACTION.search(line):
+            if kind is not None and active:
+                result[kind] = active
+            kind, active = "reactions", []
+            continue
+        if kind is None:
+            continue
+        if not line.strip():
+            # CalculiX inserts empty lines after headers and between tables.
+            continue
+        tokens = line.split()
+        expected = 8 if kind == "stress" else 4
+        values = _values(tokens, expected)
+        if values is not None and tokens[0].isdigit() and (kind != "stress" or tokens[1].isdigit()):
+            active.append(values)
+            continue
+        if active:
+            result[kind] = active
+        kind, active = None, []
+    if kind is not None and active:
+        result[kind] = active
+    return result
+
 
 def max_displacement_mm(dat_file: Path):
-    if not dat_file.exists():
+    """Backward-compatible public helper."""
+    tables = read_dat(dat_file)
+    if tables["displacement"] is None:
         return None
-    table, maximum = False, None
-    for line in dat_file.read_text(errors="replace").splitlines():
-        if "displacements" in line.lower() and "vx" in line.lower():
-            table = True
-            continue
-        if not table:
-            continue
-        match = _ROW.fullmatch(line)
-        if match:
-            xyz = [float(n.replace("D","E").replace("d","e")) for n in match.groups()[1:]]
-            magnitude = math.sqrt(sum(x*x for x in xyz))
-            maximum = max(maximum or 0, magnitude)
-        elif line.strip() and maximum is not None:
-            table = False
-    return maximum
+    return max(math.sqrt(sum(x*x for x in row[1:])) for row in tables["displacement"])
+
+
+def summarize_dat(dat_file: Path, applied_force_n, yield_mpa, *, expected_nodes=None,
+                  expected_elements=None):
+    """Provenance-aware, deliberately limited static analysis summary.
+
+    A computed ratio against a nominal yield is not a validated safety claim.
+    """
+    raw = read_dat(dat_file)
+    missing = [name for name in ("displacement", "stress", "reactions")
+               if raw[name] is None]
+    if missing:
+        raise ValueError("CalculiX .dat has no valid " + ", ".join(missing) +
+                         " output. Check *NODE PRINT/*EL PRINT and solver logs.")
+    nodes = raw["displacement"]
+    stress = raw["stress"]
+    reactions = raw["reactions"]
+    if expected_nodes is not None and len(set(int(row[0]) for row in nodes)) != expected_nodes:
+        raise ValueError("Displacement output does not cover every mesh node.")
+    if expected_elements is not None and len(set(int(row[0]) for row in stress)) != expected_elements:
+        raise ValueError("Stress output does not cover every mesh element.")
+    peak_u = max(nodes, key=lambda row:math.sqrt(sum(x*x for x in row[1:])))
+    peak_s = max(stress, key=lambda row:von_mises_mpa(*row[2:]))
+    u_mm = math.sqrt(sum(x*x for x in peak_u[1:]))
+    vm_mpa = von_mises_mpa(*peak_s[2:])
+    reaction = [sum(row[index] for row in reactions) for index in (1,2,3)]
+    residual = [reaction[i] + applied_force_n[i] for i in range(3)]
+    applied_magnitude = math.sqrt(sum(float(x)**2 for x in applied_force_n))
+    if applied_magnitude <= 0:
+        raise ValueError("Applied load magnitude must be positive.")
+    residual_norm = math.sqrt(sum(x*x for x in residual)) / applied_magnitude
+    return {
+        "source": dat_file.name,
+        "stress_type": "integration_point_cauchy",
+        "element_type_note": "First-order C3D4 stress: mesh refinement required.",
+        "max_displacement_mm": u_mm,
+        "max_displacement_node_id": int(peak_u[0]),
+        "max_von_mises_mpa": vm_mpa,
+        "max_von_mises_element_id": int(peak_s[0]),
+        "max_von_mises_integration_point": int(peak_s[1]),
+        "nominal_yield_mpa": yield_mpa,
+        "nominal_yield_to_von_mises_ratio": (
+            yield_mpa / vm_mpa if vm_mpa > 0 else None),
+        "reaction_force_n": reaction,
+        "applied_force_n": list(applied_force_n),
+        "force_balance_residual_n": residual,
+        "force_balance_relative_error": residual_norm,
+        "force_balance_check": "pass" if residual_norm <= 0.01 else "review",
+        "num_displacement_nodes": len(nodes),
+        "num_stress_integration_points": len(stress),
+        "num_reaction_nodes": len(reactions),
+        "engineering_status": "experimental_unvalidated",
+    }
