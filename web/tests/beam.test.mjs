@@ -6,8 +6,8 @@ test("reference cantilever deflection from beam FEM equals analytical theory",()
   const expected=100*150**3/(3*200000*(25*10**3/12));
   assert.ok(Math.abs(b.deflection_mm-expected)<1e-7);
   assert.ok(b.verification_relative_error<1e-8);
-  assert.ok(Math.abs(b.peak_bending_stress_mpa-90)<1e-6);
-  assert.ok(Math.abs(b.safety_factor_yield-250/90)<1e-6);
+  assert.ok(Math.abs(b.peak_bending_stress_mpa-36)<1e-6);
+  assert.ok(Math.abs(b.safety_factor_yield-250/36)<1e-6);
 });
 test("more elements preserve the reference result",()=>{
   for (const n of [1,2,4,12]) {
