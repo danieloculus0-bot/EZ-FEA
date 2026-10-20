@@ -79,7 +79,41 @@ def analyze_recorded_refinements(cases, *, displacement_tolerance=.05,
             # This analyzer normally uses the same displacement tolerance
             # passed into run_refinement. Mismatch indicates an invalid report.
             raise ValueError("Raw convergence assessment mismatches parameters")
+        diagnostics=[r.get("stress_distance_bands") for r in records]
+        band_trends=None
+        peak_distances=None
+        if all(isinstance(d,dict) and d.get("status")=="plane_distance_diagnostic"
+               for d in diagnostics):
+            limits=diagnostics[0]["excluded_near_fixture_mm"]
+            for d in diagnostics:
+                if (d["excluded_near_fixture_mm"] != limits or
+                    d["fixture_plane_axis"] != diagnostics[0]["fixture_plane_axis"] or
+                    abs(d["fixture_plane_coordinate_mm"] -
+                        diagnostics[0]["fixture_plane_coordinate_mm"]) > 1e-6):
+                    raise ValueError("Support stress reference zone changed across meshes")
+            peak_distances=[d["global_peak_host_tet_centroid_distance_mm"] for d in diagnostics]
+            band_trends=[]
+            for i,limit in enumerate(limits):
+                values=[d["outside_band_max_mpa"][i] for d in diagnostics]
+                if any(x is None or not isinstance(x,(int,float)) or
+                       not math.isfinite(x) or x<=0 for x in values):
+                    band_trends.append({"min_distance_mm":limit,
+                                        "observation":"insufficient_interior_gauss_points"})
+                    continue
+                shifts=[relative_change(a,b) for a,b in zip(values,values[1:])]
+                band_trends.append({
+                    "min_distance_mm":limit,
+                    "max_stress_mpa":values,
+                    "adjacent_relative_changes":shifts,
+                    "last_change_pct":100*shifts[-1],
+                    "observation":("limited_sensitivity_at_checked_mesh_sizes"
+                                   if increasing and all(v<=peak_stress_tolerance
+                                                         for v in shifts[-2:])
+                                   else "mesh_sensitive_at_checked_mesh_sizes"),
+                })
         out.append({
+            "stress_band_trends":band_trends,
+            "peak_host_tet_centroid_distance_mm":peak_distances,
             "key":entry["key"],
             "specimen_definition_sha256":entry["definition_sha256"],
             "step_sha256":raw["input_sha256"],
