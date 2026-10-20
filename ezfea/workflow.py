@@ -22,15 +22,24 @@ def run_case(case: Analysis, output_root="runs"):
             "disclaimer":"EXPERIMENTAL - NOT VALIDATED FOR ENGINEERING SIGN-OFF"}
     (out/"case.json").write_text(json.dumps(meta,indent=2)+"\n", encoding="utf-8")
     try:
-        mesh = build_mesh(str(input_path),case.fixed_face,case.loaded_face,case.mesh_size_mm)
+        if case.connections:
+            mesh = build_mesh(str(input_path), 0, 0, case.mesh_size_mm,
+                              constraint_faces=[c.face for c in case.connections],
+                              load_faces=[load.face for load in case.loads])
+        else:
+            mesh = build_mesh(str(input_path),case.fixed_face,case.loaded_face,case.mesh_size_mm)
         meta["mesh"] = {"nodes":len(mesh.nodes),"elements":len(mesh.elements),
-                        "loaded_area_mm2":mesh.loaded_area_mm2,"element_type":"C3D4"}
+                        "loaded_area_mm2":mesh.loaded_area_mm2,"element_type":"C3D4",
+                        "connections":len(case.active_connections),
+                        "load_regions":len(case.active_loads),
+                        "loaded_areas_by_face_mm2":mesh.load_areas_by_face}
         inp = write_input(case,mesh,out/"analysis.inp")
         meta.update(run_calculix(inp))
         metrics = summarize_dat(
-            out/"analysis.dat", case.force_n, case.material.yield_mpa,
+            out/"analysis.dat", case.total_force_n, case.material.yield_mpa,
             expected_nodes=len(mesh.nodes),
             expected_elements=len(mesh.elements),
+            applied_force_scale_n=case.force_scale_n,
         )
         meta["results"] = metrics
         meta["max_displacement_mm"] = metrics["max_displacement_mm"]
