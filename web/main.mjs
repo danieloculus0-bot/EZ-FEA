@@ -1,5 +1,5 @@
 import { analyzeBeam, PRESETS } from "./beam.mjs";
-import { reviewBeam, reviewCad, reviewFrameStudies } from "./bean_advisor.mjs";
+import { reviewBeam, reviewCad, reviewFrameStudies, reviewFrameSelection } from "./bean_advisor.mjs";
 const byId=(id)=>document.getElementById(id);
 let viewer=null;
 let mode="demo";
@@ -7,6 +7,9 @@ let currentFile=null;
 let points={fixed:null,load:null};
 let calculated=null;
 let beanPreviousMessage="";
+let frameStudy=null;
+let publishedFrames=null;
+let evidencePromise=null;
 
 function updateBean(){
   const review=mode==="demo" ? reviewBeam(beamInput(), calculated) :
@@ -25,16 +28,26 @@ function updateBean(){
   beanPreviousMessage=newMessage;
 }
 
+async function loadFrameEvidence(){
+  if(!evidencePromise){
+    evidencePromise=(async()=>{
+      const response=await fetch("./data/frame_studies.json",{cache:"no-store"});
+      if(!response.ok)throw new Error("Published CalculiX results unavailable");
+      const evidence=await response.json();
+      if(evidence.schema!=="ezfea.frame_evidence.v1" ||
+         !Array.isArray(evidence.studies))throw new Error("Unrecognized published physics format");
+      reviewFrameStudies(evidence.studies);
+      publishedFrames=evidence;
+      return evidence;
+    })().catch(error=>{evidencePromise=null;throw error;});
+  }
+  return evidencePromise;
+}
+
 async function showFrameEvidence(){
   const target=byId("beanStudyList");
   try {
-    const response=await fetch("./data/frame_studies.json",{cache:"no-store"});
-    if(!response.ok)throw new Error("Solver reference unavailable");
-    const evidence=await response.json();
-    if(evidence.schema!=="ezfea.frame_evidence.v1" ||
-       !Array.isArray(evidence.studies) || evidence.studies.length!==3){
-      throw new Error("Unrecognized reference format");
-    }
+    const evidence=await loadFrameEvidence();
     const check=reviewFrameStudies(evidence.studies);
     target.replaceChildren();
     for(const entry of evidence.studies){
@@ -55,8 +68,90 @@ async function showFrameEvidence(){
       "× less under identical lateral loading." :
       "BEAN check: bracing comparison requires investigation.";
     target.appendChild(note);
+    if(/^https:\/\/github\.com\/danieloculus0-bot\/EZ-FEA\/actions\/runs\/\d+$/.test(evidence.source_run||"")){
+      byId("beanStudySource").href=evidence.source_run;
+    }
   } catch(_error){
     target.textContent="Recorded 3D results could not be loaded. The beam demo still works.";
+  }
+}
+
+function renderFrameStudy(){
+  if(mode!=="frame"||!frameStudy||!viewer)return;
+  try{viewer.showFrameStudy(frameStudy);}
+  catch(err){announce("Unable to preview recorded frame: "+err.message);}
+}
+
+function showFrameResults(study){
+  if(!study)return;
+  byId("frameResultValues").hidden=false;
+  byId("frameDeflection").textContent=format(study.max_displacement_mm,5)+" mm";
+  byId("frameStress").textContent=format(study.max_von_mises_mpa,5)+" MPa";
+  byId("frameBalance").textContent=format(100*study.force_balance_relative_error,3)+"%";
+  byId("frameResultSummary").textContent=
+    "Previously solved with real 3D CalculiX (C3D4). The frame drawing is a reference silhouette, not a computed deformation or stress contour.";
+  byId("frameResultProvenance").textContent=
+    "Archived: "+(publishedFrames.generated_utc ?
+      new Date(publishedFrames.generated_utc).toLocaleString() : "prior verified run")+
+    " · "+study.mesh_elements+" tetrahedra · mesh "+study.mesh_size_mm+
+    " mm · No new solve was launched from this browser.";
+  const url=publishedFrames.source_run;
+  if(/^https:\/\/github\.com\/danieloculus0-bot\/EZ-FEA\/actions\/runs\/\d+$/.test(url||"")){
+    byId("frameSolverLink").href=url;
+  }
+}
+
+function selectFrameStudy(key){
+  const study=publishedFrames?.studies?.find(item=>item.key===key);
+  if(!study)return;
+  mode="frame";
+  currentFile=null;
+  frameStudy=study;
+  points={fixed:null,load:null};
+  byId("fileInput").value="";
+  byId("partInfo").textContent=study.name+" · recorded 3D solve";
+  updateMode();
+  byId("frameParameters").textContent="";
+  const detail=document.createElement("strong");
+  detail.textContent="Fixed test conditions";
+  const rest=document.createElement("div");
+  const d=study.model_dimensions_mm;
+  const force=study.force_n.map((n)=>format(n,4)).join(", ");
+  rest.textContent=d.width+" × "+d.height+" × "+d.depth+" mm · "+d.member+
+    " mm solid members · "+force+" N (X, Y, Z) · "+study.material_name;
+  byId("frameParameters").append(detail,rest);
+  showFrameResults(study);
+  renderFrameStudy();
+  updateBean();
+  announce(study.name+": showing verified archived solver results, not a live analysis.");
+}
+
+async function populateFrameSelector(){
+  const select=byId("frameSelect");
+  try{
+    const evidence=await loadFrameEvidence();
+    select.replaceChildren();
+    const placeholder=document.createElement("option");
+    placeholder.value="";
+    placeholder.textContent="Choose a real 3D study…";
+    select.appendChild(placeholder);
+    const selectable=evidence.studies.filter(study=>
+      ["portal","rectangle","braced"].includes(study.construction) &&
+      study.model_dimensions_mm && Number.isFinite(study.mesh_elements) &&
+      study.force_balance_relative_error<=.01);
+    for(const study of selectable){
+      const option=document.createElement("option");
+      option.value=study.key;
+      option.textContent=study.name;
+      select.appendChild(option);
+    }
+    select.disabled=selectable.length===0;
+    byId("frameSelectNote").textContent=selectable.length+
+      " real recorded 3D solves · fixed inputs, read-only results";
+  }catch(_error){
+    select.disabled=true;
+    select.replaceChildren(new Option("Solver studies temporarily unavailable",""));
+    byId("frameSelectNote").textContent="The real 2D beam demonstration still works.";
   }
 }
 
