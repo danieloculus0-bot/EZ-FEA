@@ -117,10 +117,25 @@
               <button type="button" id="resetView" class="plain-button">Reset view</button>
             </div>
           </div>
-          <div class="explain-box">
-            <div class="explain-icon" aria-hidden="true">✦</div>
-            <div><strong>What BEAN could do here</strong><p>Interpret real connections, recommend the right physics, and spot questionable assumptions. That intelligence layer is not connected in this browser release.</p></div>
-          </div>
+          <section class="explain-box bean-panel" aria-label="BEAN engineering advisor">
+            <div class="bean-mascot">
+              <img id="beanMascot" src="https://raw.githubusercontent.com/danieloculus0-bot/BEAN/main/docs/bean-official.webp"
+                   alt="BEAN, the smiling green sprout mascot" width="92" height="92" loading="lazy">
+            </div>
+            <div class="bean-copy">
+              <div class="bean-heading"><strong>BEAN <span>ENGINEERING READ</span></strong><span class="bean-tier">Browser checks</span></div>
+              <strong id="beanHeadline" class="bean-headline">Checking your setup</strong>
+              <p id="beanAdvice" aria-live="polite">I'll inspect the actual values you calculate and point out important assumptions.</p>
+              <p class="bean-disclosure">Transparent engineering checks, not live BEAN Core reasoning or an independent safety certification.</p>
+              <details class="bean-studies" id="beanFrameStudies">
+                <summary>See 3D physics results from the real engine</summary>
+                <div id="beanStudyList" class="bean-study-list">Loading recorded solver evidence…</div>
+                <p class="bean-disclosure">Previously computed in CalculiX, not solved on this web page. All frames use idealized solid joints and one mesh size.</p>
+                <a class="bean-study-source" href="https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/39488256233"
+                   target="_blank" rel="noopener noreferrer">Inspect the original solver run ↗</a>
+              </details>
+            </div>
+          </section>
         </section>
         <aside class="results" aria-label="Analysis result">
           <div class="results-panel">
