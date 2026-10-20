@@ -1,29 +1,71 @@
 # EZ-FEA
 
-Experimental structural analysis using a genuine Gmsh tetrahedral mesher and CalculiX native solver, with a separate educational browser workbench. The browser must not be mistaken for a server-side CAD solver.
+**EZ-FEA is evolving into an assembly-aware engineering analysis system** built on genuine Gmsh meshing and CalculiX physics. The goal is to take an imported CAD assembly from **geometry → detected mates → confirmed mechanical joints → meaningful loads and restraints → independently checked structural results**, without requiring engineers to manually reconstruct every connection.
+
+EZ-FEA is part of the broader **Axiom engineering software suite**. Its future BEAN integration should explain geometric evidence, help review joints, and flag questionable assumptions; the actual structural calculations remain the responsibility of the physics engine. The [educational browser demo](https://danieloculus0-bot.github.io/EZ-FEA/) is separate from native 3D solving and must never be represented as a live arbitrary-CAD solver.
+
+## Product direction: from CAD assembly to structural model
+
+1. **Import an assembly:** retain distinct solids, component identifiers, geometry and candidate connection faces. Do not indiscriminately fuse components into one solid.
+2. **Choose what is grounded:** establish a reference component, traverse the connection graph and expose branches, loops, unsupported components and possible remaining degrees of freedom. Graph reachability alone is not proof of kinematic stability.
+3. **Discover likely mates:** use opposing face overlap, concentric cylinders, hole patterns, clearances and fastener geometry as *evidence*. Record the paired faces and the reason each candidate exists.
+4. **Review an Excel-style Joint Matrix:** present one numbered row per candidate joint, with dropdown choices such as **Welded, Bolted, Pinned, Bearing, Bonded, Sliding, Contact only**, or **Unassigned**. Allow drag-to-fill (including copying *Welded* down a full column), range editing, paste, undo/redo, filtering and CSV/Excel-oriented workflows.
+5. **Define actual connection physics:** a classification does not automatically create constraints. Capture the needed weld, fastener, contact, clearance, bearing and friction parameters; map *confirmed* joints to a supported, tested CalculiX model and report any approximation.
+6. **Apply realistic loads and solve:** preserve actual load paths, contact separation, restraints and material assignments. Verify reaction forces/moments, mesh sensitivity and relevant analytical/physical benchmarks before treating results as useful engineering evidence.
+
+The system must support *connection graphs*, not assume every assembly is one simple chain. A bolted loop, welded frame, pin mechanism and detached subassembly are different mechanical problems. **Automation should reduce setup work without silently inventing structural behavior.**
+
+### Joint Matrix — usable development preview
+
+**[Open the Joint Matrix spreadsheet workbench](https://danieloculus0-bot.github.io/EZ-FEA/joint-matrix.html)** · [Detailed workflow and limitations](docs/JOINT_MATRIX.md)
+
+| Available today | Planned next |
+|---|---|
+| Conservative opposing **axis-aligned planar STEP-face** candidate detector | Verified face overlap, concentric cylindrical mates, hole patterns and fastener grouping |
+| Choose a grounded component; track graph reachability, branches and cycles | Kinematic DOF, mechanism, overconstraint and stability checks |
+| Joint IDs and CAD face pairs with **Unassigned** connection physics | Evidence-backed suggested joint categories, confidence and missing-data review |
+| Joint-type dropdown, drag-fill, Shift-click selection, column paste, undo/redo, CSV/JSON export | Additional Excel-like editing, filtering, parameter columns and saved assembly workflows |
+| Isolated, verified two-solid STEP contact prototype | General multibody STEP/assembly contact, bonded/tied and connector models with independent validation |
+
+The preview begins with clearly labeled **sample joints**; it can also import the actual `joint_matrix.json` or `mate_graph.json` produced by the native STEP mate scanner. It does **not** perform a structural solve when you change a dropdown. The main browser demo is intentionally not rebuilt for each engineering milestone.
 
 ## Current build and verification
 
-**Reviewed:** 2026-10-20 · **Inspected `main`:** `6a930409775f` · **Status:** experimental research/beta, not an engineering certification.
+**Development snapshot:** October 20, 2026 · **Status:** experimental research/beta, **not** a certified engineering analysis product.
 
-- [Tests](https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/39503596467) — **Passed** at inspected `main`.
-- [Real 3D Solver Smoke Test](https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/39503596430) — **Passed** at inspected `main`.
+- [Tests](https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/39510441434) — **Passed** at source revision `9c2a8c36ba16` (before this README update).
+- [Real 3D Solver Smoke Test](https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/39510441383) — **Passed** at that revision.
+- [Native STEP Mate Detection and Joint Matrix](https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/39510337047) — **Passed**; real two-solid STEP file yielded one candidate planar mate with 100 mm² bounding overlap and no invented joint classification.
+- [Separate-solid STEP contact experiment](https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/39509089816) — **Passed**; distinct C3D10 solids transmitted compression but released upon separation.
 
-[Live Actions](https://github.com/danieloculus0-bot/EZ-FEA/actions) supersedes this recorded state.
+**[Live GitHub Actions](https://github.com/danieloculus0-bot/EZ-FEA/actions) is authoritative for later commits.**
 
 ## Implemented now
 
 - Real STEP single-solid linear-static solves, multi-face fixtures/loads, numerical reaction-force **and reaction-moment** equilibrium checks.
 - **Native force introduction:** choose an entire-face distributed load or a positionable Gaussian traction footprint with specified total XYZ force, center XYZ and spread (mm). Real T3/T6 surface quadrature produces equivalent FE nodal loads and reports the actual resultant force, eccentric moment and reaction balance. This approximates a pressure pad; it does **not** simulate nonlinear physical contact.
 - **True native normal pressure (experimental backend):** CalculiX `*DSLOAD P` applied to real tetrahedral exterior faces, independently checked against pressure-integrated total force and support reaction moments. The [four-solve native benchmark](https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/39508482477) passed for C3D4 and C3D10.
-- **Real separable contact proof:** two independent C3D8 steel solids with a genuine CalculiX frictionless surface-to-surface contact pair transferred **962.7 N** in compression, versus **0 N** with the contact pair disabled and approximately **0 N** during separation. This is an [isolated controlled specimen](docs/PRESSURE_CONTACT.md), not arbitrary multibody STEP support.
+- **Real separable contact proofs:** a controlled two-brick C3D8 test transferred **962.7 N** through CalculiX frictionless contact under compression and no meaningful load during separation. A later constrained two-part STEP/C3D10 experiment also retained **zero shared nodes** and transferred compression through its detected CAD interface. These are verified prototypes, **not** a generalized assembly/contact solver. [Pressure/contact evidence](docs/PRESSURE_CONTACT.md) · [STEP experiment](https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/39509089816).
 - **Grounded STEP assembly mate graph + Joint Matrix prototype:** auto-detect candidate opposing planar CAD mates, preserve part/face IDs and reachability from a grounded component, and review joints in an Excel-like dropdown / drag-to-fill grid. Geometry never guesses welded/bolted/pinned physics. [Joint Matrix instructions](docs/JOINT_MATRIX.md) · [standalone spreadsheet preview](https://danieloculus0-bot.github.io/EZ-FEA/joint-matrix.html).
 - Six native frame specimens and repeatable multi-grid mesh refinement; C3D4/C3D10 element-order studies have independent CI.
 - [Browser demo](https://danieloculus0-bot.github.io/EZ-FEA/) performs simplified beam physics and displays archived native results. Arbitrary uploaded CAD is **preview only**.
 
 ## Run and test
 
-Install Gmsh and native CalculiX (`ccx`) and use `python -m ezfea.convergence --demo --meshes 12 8 5` for native multi-mesh evidence. [Full earlier installation and validation guide](docs/archive/README_2026-10-20_before_refresh.md).
+For native analyses, install the Gmsh Python package and CalculiX (`ccx`), and consult the [earlier installation and validation guide](docs/archive/README_2026-10-20_before_refresh.md).
+
+```bash
+# Existing single-solid native mesh-refinement experiment
+python -m ezfea.convergence --demo --meshes 12 8 5
+
+# Scan candidate planar mates in a multi-solid STEP assembly
+python -m ezfea.assembly_mates path/to/assembly.step --out mates.json
+
+# Produce verified sample STEP, geometric mate graph and spreadsheet files
+python -m scripts.build_assembly_mate_evidence --out runs/mate_review
+```
+
+Open the [Joint Matrix](https://danieloculus0-bot.github.io/EZ-FEA/joint-matrix.html), choose **Import scanned joints JSON**, and select the generated `mates.json` or `joint_matrix.json`. The workbench initially displays sample rows until you import actual evidence. For automated verification, see [Tests](https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/test.yml), [Mate Detection](https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/assembly-mate-review.yml), and [Native Contact](https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/step-contact.yml).
 
 ## Latest physics verification (October 20, 2026)
 
@@ -37,12 +79,20 @@ These measurements support a limited experimental solver regression baseline, **
 ## Unverified and out of scope
 
 - Not validated for engineering sign-off. Mesh stability is not physical accuracy, and idealized fixed-edge stresses may diverge.
-- The generic `Analysis` API still handles only one STEP solid; the independently verified two-brick frictionless contact specimen does **not** constitute arbitrary STEP assemblies, welds, pins, bolts or actuator joint support.
+- The generic `Analysis` API is still single-solid. The two controlled contact prototypes do **not** establish arbitrary STEP assembly solving, welds, fasteners, pins, bearings, joint friction or actuator mechanics.
+- Current geometric detection is limited to planar bounding-box candidates; a detected mate is **not** a confirmed mechanical connection. Changing a Joint Matrix type does not yet create solver constraints.
+- Independent verification of general load cases, realistic joint behavior, curved geometry and contact-pressure convergence remains incomplete.
 - Native solver CI success and the browser's educational beam result are different verification scopes.
 
-## Next engineering work
+## Development roadmap
 
-Extend planar geometric mates to verified face intersections, cylindrical axes and hole patterns; preserve explicit joint classifications and translate only confirmed physical models into native contact/connector physics. Continue pressure API, general multibody STEP contact, and independent shear/torsion benchmarks.
+1. **Expand candidate mate detection:** compute actual planar face overlap (not only bounding boxes), recognize concentric cylindrical surfaces and pin/bearing axes, detect matched fastener-hole groups, evaluate clearances and provide geometry-grounded confidence and evidence. Preserve stable identities across assembly reimports.
+2. **Finish the engineering Joint Matrix:** robust large-assembly range fill, paste, filtering, row grouping and Excel-compatible round-trip; columns for joint dimensions and engineering assumptions (weld size, bolt pattern/preload, bearing clearance, friction). BEAN may suggest and explain classifications, but confirmation and provenance remain explicit.
+3. **Connect confirmed joints to native physics:** first validate bonded/tied interfaces and frictionless separable contacts on independent STEP solids, then pins/bearings and simplified bolt groups. Verify DOFs, load transfer, reaction force/moment balance, separation and convergence separately for each connector family. Do not silently convert every selected *Welded* label into a rigid tie.
+4. **Assembly-wide solve and review:** material mapping, realistic face pressure/traction, multi-part meshing, mechanism/overconstraint detection, accessible stress/displacement results and reproducible solver artifacts. Add independent shear, torsion, joint and stress-concentration benchmarks.
+5. **Axiom/BEAN integration milestone:** reuse shared module contracts and the coherent dark/lime engineering UI. BEAN should explain mate evidence, missing inputs and validation flags; CalculiX/Gmsh still perform actual mechanics. Update the public demo at substantial, verified milestones, not with every internal experiment.
+
+**Success criterion:** Import a practical fabricated assembly, ground it, identify candidate joints, classify them efficiently in a spreadsheet, confirm real connection parameters, and obtain a mechanically defensible analysis with traceable assumptions and verification.
 
 ## Reference
 
@@ -50,5 +100,7 @@ Extend planar geometric mates to verified face intersections, cylindrical axes a
 - [Validation report](docs/VALIDATION.md)
 - [Native pressure & separable contact evidence](docs/PRESSURE_CONTACT.md)
 - [Grounded assembly Joint Matrix and real STEP mate-detection test](docs/JOINT_MATRIX.md)
+- [Standalone Joint Matrix workbench](https://danieloculus0-bot.github.io/EZ-FEA/joint-matrix.html)
+- [Native STEP mate-scanner source](ezfea/assembly_mates.py) · [Joint Matrix model](ezfea/joint_matrix.py)
 - [Mesh refinement code](ezfea/convergence.py)
 - [**Archived full README: development history, experiments and original setup details**](docs/archive/README_2026-10-20_before_refresh.md)
