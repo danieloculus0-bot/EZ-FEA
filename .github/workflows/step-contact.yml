@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - "ezfea/contact_step.py"
+      - "tests/test_contact_step.py"
       - "ezfea/native_pressure.py"
       - "ezfea/mesh.py"
       - ".github/workflows/step-contact.yml"
@@ -27,6 +28,9 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y calculix-ccx libglu1-mesa
           python -m pip install -r requirements.txt
+      - name: Check CAD contact deck and independent node-set invariants
+        run: |
+          python -m unittest discover -s tests -p test_contact_step.py -v
       - name: Build two separate STEP solids, mesh C3D10 and verify contact
         run: |
           python -m ezfea.contact_step --out step_contact_evidence --mesh 7
