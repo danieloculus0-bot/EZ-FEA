@@ -10,15 +10,16 @@ Simple STEP-to-structural-FEA desktop app powered by the free **Gmsh** mesher an
 
 BEAN's official green sprout mascot now appears as a gently animated engineering advisor. The browser BEAN panel uses deterministic, testable checks based on actual beam numerical output to explain bending stress vs nominal material yield, tip movement, agreement with the independent analytical cantilever reference, and model limitations. On imported CAD previews, it explains whether fixture and load marks are complete and why those marks are **not** physical restraints. Motion honors `prefers-reduced-motion`.
 
-The browser BEAN panel also exposes **three genuine, previously calculated 3D frame studies** with displacement and stress metrics from a recorded native Gmsh/CalculiX GitHub Actions solve. This is a **static, provenance-linked result set**, not a fresh cloud solve, not a direct browser connection to the 3D solver, and not an autonomous BEAN Core model or safety approval. See [Browser Lab details](web/README.md).
+The browser BEAN panel also exposes **six genuine, previously calculated 3D frame studies** with displacement and stress metrics from a recorded native Gmsh/CalculiX GitHub Actions solve. This is a **workflow-refreshed, provenance-linked result set**, not a fresh browser-triggered cloud solve, not a direct browser connection to the 3D solver, and not an autonomous BEAN Core model or safety approval. See [Browser Lab details](web/README.md).
 
 ## Repeatable frame physics specimens
 
-The native Python engine now includes `ezfea/frame_benchmarks.py`: three parametric STEP test pieces with identical overall dimensions (240 × 180 × 20 mm), solid 20 mm members, nominal A36 steel, explicit supports/loads, and recorded case metadata:
+The native Python engine now includes `ezfea/frame_benchmarks.py`: six repeatable STEP loading cases for three parametric frame shapes with identical overall dimensions (240 × 180 × 20 mm), solid 20 mm members, nominal A36 steel, explicit supports/loads, and recorded case metadata:
 
 - **Open portal**: 250 N vertical loading.
 - **Closed rectangular frame**: 250 N horizontal racking.
 - **Diagonally braced frame**: same 250 N horizontal racking, for a controlled comparison.
+- **Open portal, rectangle and braced rectangle**: each also tested under the complementary 250 N lateral or downward load, for six actual studies in total.
 
 These are single continuous Boolean-fused solids representing idealized perfectly connected members, **not multi-component welded/bolted/contact assemblies**. Each is meshed and solved in CalculiX with equilibrium checks and saved STEP/inputs/FRD/DAT/log/JSON records. The dedicated [Frame Specimen Physics Suite](https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/frame-physics.yml) runs the real solver and archives artifacts, and it tests that the braced example reduces racking deflection relative to the unbraced frame. One mesh size does not prove convergence or engineering accuracy.
 
@@ -34,7 +35,15 @@ With Gmsh Python API and the external `ccx` solver installed, run all three case
 python -m ezfea.frame_benchmarks --out frame_benchmark_artifacts --mesh-mm 14
 ~~~
 
-The latest browser-bundled reference results originate from [this successful recorded solver run](https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/39488256233). The solver evidence is intentionally kept separate from BEAN's advisory remarks; BEAN does not calculate or fabricate stress.
+GitHub Pages now automatically overlays the latest successful archived six-case result set at deployment; [review the solver workflow](https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/frame-physics.yml). The repository carries a three-case offline fallback. The solver evidence is intentionally kept separate from BEAN's advisory remarks; BEAN does not calculate or fabricate stress.
+
+### Automatic native-physics results bridge
+
+A successful authorized frame workflow run uses `scripts/publish_frame_evidence.py` to verify six solved cases and upload a JSON artifact, complete with the source run, commit, frame geometry, forces, material, mesh counts, solver displacement, von Mises stress and reaction equilibrium. The **Pages workflow automatically downloads the latest good artifact and redeploys the website**. Failed solver runs cannot replace published results. The browser displays a selectable 3D **reference geometry** alongside these real, archived values; it does not make up stress contours.
+
+To add another repeatable simulation, extend `STUDIES` in `ezfea/frame_benchmarks.py`, assign its label in `scripts/publish_frame_evidence.py`, and include comparison/test expectations. The workflow does the Gmsh/CalculiX solve and refreshes the site's selector without a manual web result update.
+
+The workflow may also be manually started by a repo maintainer in **Actions → Frame Specimen Physics Suite → Run workflow**. Anonymous GitHub Pages visitors **cannot** launch arbitrary user-uploaded 3D jobs, which would require an authenticated compute service. No tokens or privileged workflow endpoints are embedded in website HTML. See [web/README.md](web/README.md).
 
 ## Windows installation
 
@@ -114,7 +123,7 @@ are applied to all nodes on the selected face; they are **not** hinge joints or
 actuator elements. Separate physical components and connector physics will need
 their own assembly/contact/connector phase. No default safety claims.
 
-## Verified three-frame solver studies (2026-10-20)
+## Initial three-frame solver studies (historical baseline, 2026-10-20)
 
 The Python engine now includes a **repeatable real-solver frame suite**, separate from the simplified GitHub Pages browser beam demo:
 
@@ -122,7 +131,7 @@ The Python engine now includes a **repeatable real-solver frame suite**, separat
 - `02_rectangle_racking`: closed unbraced rectangular frame under lateral racking.
 - `03_braced_racking`: matched braced rectangle under the same lateral force.
 
-`ezfea/frame_benchmarks.py` constructs Boolean-fused continuous STEP solids with Gmsh, selects geometry-based face constraints, executes CalculiX, captures source parameters and SHA-256 identities, reports displacement/stress/reaction equilibrium, and checks that the braced specimen deflects less than its matched unbraced case. These three **actual 3D solves passed the October 20 Frame Specimen Physics Suite**. To reproduce with Gmsh and `ccx` installed:
+`ezfea/frame_benchmarks.py` constructs Boolean-fused continuous STEP solids with Gmsh, selects geometry-based face constraints, executes CalculiX, captures source parameters and SHA-256 identities, reports displacement/stress/reaction equilibrium, and checks that the braced specimen deflects less than its matched unbraced case. These initial three **actual 3D solves passed the October 20 Frame Specimen Physics Suite**; the repeatable suite has since expanded to six combinations. To reproduce with Gmsh and `ccx` installed:
 
 ~~~sh
 python -m ezfea.frame_benchmarks --out runs/frame_benchmarks --mesh-mm 14
