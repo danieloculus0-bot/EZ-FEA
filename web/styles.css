@@ -125,3 +125,189 @@ summary{cursor:pointer;font-size:13px;font-weight:800}
 @media(max-width:1150px){.workspace-grid{grid-template-columns:minmax(250px,320px) minmax(380px,1fr)}.results{grid-column:1/-1;display:grid;grid-template-columns:1.2fr 1fr;align-items:start}.viewer-stage{height:440px}}
 @media(max-width:750px){.topbar{padding:12px 15px}.top-actions{gap:12px}.brand-name{font-size:19px}.status-chip{font-size:10px}.top-actions .link{display:none}.eyebrow-banner{padding:10px 15px}main{padding:20px 13px}.welcome{display:block}.welcome-side{margin-top:14px}.workspace-grid{grid-template-columns:1fr;gap:12px}.sidebar{gap:12px}.results{grid-column:auto;display:flex}.viewer-stage{height:340px}.foot{flex-direction:column;gap:4px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+
+
+/*
+ * EZ-FEA / BEAN Goth Green
+ * References the actual venvWin dark desktop palette and its strong panels,
+ * but uses BEAN mint and acid lime instead of venvWin orange.
+ * Visual changes only; never reinterpret structural simulation data.
+ */
+:root {
+  color-scheme:dark;
+  --ink:#edf6ef;
+  --muted:#afc2b5;
+  --light:#080d0c;
+  --white:#101816;
+  --navy:#090e0d;
+  --mint:#5ff39a;
+  --green:#26c979;
+  --orange:#c5ff4a; /* existing load-indicator semantic variable */
+  --lime:#c5ff4a;
+  --border:#2b443b;
+  --shadow:0 12px 32px rgba(0,0,0,.44);
+}
+
+body {
+  background:radial-gradient(ellipse at 50% -15%,#1c2c22 0%,#111a16 34%,#080c0a 82%);
+  color:var(--ink);
+  min-height:100vh;
+}
+a { color:inherit; }
+.skip { background:#14271c;color:#efffed; }
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,
+summary:focus-visible,.upload-area:focus-within {
+  outline:3px solid var(--lime);
+  outline-offset:3px;
+}
+.topbar {
+  background:linear-gradient(180deg,#151c18 0%,#080c0b 100%);
+  border-bottom:1px solid #345342;
+  box-shadow:0 8px 28px rgba(0,0,0,.3);
+}
+.brand-mark {
+  background:linear-gradient(145deg,#c7ff53,#51ef9d);
+  color:#09140b;
+  box-shadow:0 0 0 1px rgba(181,255,82,.28),0 0 22px rgba(112,255,134,.12);
+}
+.brand-name small { color:#afc8b7; }
+.status-chip { background:#16261c;border-color:#35573c;color:#ddf7e4; }
+.status-dot { background:var(--lime);box-shadow:0 0 11px rgba(197,255,74,.45); }
+.link { color:#ddf7e3; }
+.eyebrow-banner {
+  background:#172318;
+  color:#dbefce;
+  border-bottom:1px solid #34583a;
+}
+.shield { color:var(--lime); }
+.eyebrow { color:#9fff6a; }
+h1,h2 { color:#f2f7ef; }
+.welcome p:not(.eyebrow), .hint { color:var(--muted); }
+.panel,.viewer-panel,.results-panel,.results-footer {
+  background:linear-gradient(180deg,#17211c 0%,#101713 100%);
+  border-color:var(--border);
+  box-shadow:0 1px 0 rgba(192,255,178,.03) inset,var(--shadow);
+}
+.step-num { background:#1e3b27;color:#b7ff91; }
+.step-num.dark { background:var(--lime);color:#122012; }
+.button { border-radius:10px;min-height:48px; }
+.button-primary {
+  background:linear-gradient(145deg,#87fda5,#31c77c);
+  border:1px solid #7afca1;
+  color:#07180e;
+  box-shadow:0 3px 13px rgba(41,255,128,.13);
+}
+.button-primary:hover { background:linear-gradient(145deg,#b5ff9b,#54e29b); }
+.button-outline {
+  background:linear-gradient(180deg,#25342b,#15211a);
+  border:1px solid #5b7b61;
+  color:#e6f6e9;
+}
+.button-outline:hover { background:#314535; }
+.button-go {
+  background:linear-gradient(135deg,#c5ff4a 0%,#65f69d 100%);
+  color:#0b1e12;
+  min-height:56px;
+  border:1px solid #b3ff64;
+  box-shadow:0 0 25px rgba(131,255,103,.12),0 5px 16px rgba(0,0,0,.3);
+}
+.button-go:hover { background:linear-gradient(135deg,#deff8a,#8fffac); }
+.button:disabled { color:#c3cec7; }
+.upload-area {
+  background:#111b16;
+  border-color:#55765b;
+  color:#e6f5e8;
+  min-height:156px;
+}
+.upload-area:hover,.upload-area.dragover {
+  border-color:var(--lime);background:#1c3020;
+}
+.upload-icon {
+  background:linear-gradient(135deg,#c5ff4a,#65e88f);
+  color:#092110;
+  width:37px;height:37px;
+}
+.upload-area span:not(.upload-icon),.upload-caption { color:#bdcfbf; }
+.part-chip {
+  background:#1e2a22;border:1px solid #355141;
+  color:#d2e5d5;
+}
+.legend-row,.selection-list,.smallnote,.material-note { color:#b0c8b5; }
+.legend-dot.green,.tiny-round.green { background:#5ff39a; }
+.legend-dot.orange,.tiny-round.orange { background:var(--lime); }
+input:not([type=file]),select {
+  min-height:48px;
+  background:#0b130e;
+  color:#f1f7f0;
+  border:1px solid #53705b;
+}
+input:not([type=file]):hover,select:hover { border-color:#81ad87; }
+input:not([type=file]):focus,select:focus { background:#0f1e13; }
+input::placeholder { color:#a5b9aa; }
+.input-with-unit span,.dimensions label { color:#b7cdb9; }
+details { border-top-color:#3c5042; }
+summary { color:#e6f6e7; }
+.expand-label,.plain-button,.validation-link { color:#9af7ad; }
+.plain-button:hover,.validation-link:hover { color:var(--lime); }
+.viewer-top p { color:#b6c9bd; }
+.viewer-badge {
+  background:#22402b;border:1px solid #416b47;color:#c6ff99;
+}
+.viewer-stage {
+  background:radial-gradient(ellipse at 48% 45%,#25392c 0%,#151f19 70%,#0b120f 100%);
+}
+.viewer-fallback { color:#d9e8db; }
+.viewer-help {
+  background:rgba(11,22,14,.89);
+  color:#e6f6e9;border:1px solid #46624b;
+}
+.pill {
+  border-color:#476047;
+  background:rgba(10,25,14,.92);
+  color:#e3f2e3;
+}
+.viewer-footer { border-top:1px solid #304536;color:#b9cfbd; }
+.explain-box {
+  border:1px solid #345841;
+  background:linear-gradient(145deg,#1a3120,#112017);
+  color:#def8de;
+}
+.explain-icon {
+  background:linear-gradient(145deg,#c5ff4a,#5bf09d);
+  color:#0e2612;
+}
+.explain-box p { color:#bed5c2; }
+.results-panel {
+  background:linear-gradient(180deg,#152117,#090f0c);
+  border-color:#36543b;
+  color:#f0f7ed;
+}
+.results-panel .hint,.run-caption { color:#b5cfbc; }
+.result-inner,.micro-note { border-top-color:#3c5141; }
+.empty-results,#cadNoSolver { color:#eff8eb; }
+.empty-results span:last-child,#cadNoSolver p { color:#b5cbb7; }
+.empty-icon { color:var(--lime); }
+.result-row { border-bottom-color:#405444;color:#c4dec7; }
+.result-row strong { color:#f6fff3; }
+.stress-head,.result-summary { color:#e4f1dd; }
+.stress-track { background:#2e4833; }
+.stress-fill { background:linear-gradient(90deg,#5fef99,#c5ff4a); }
+.stress-fill.warn { background:linear-gradient(90deg,#ffa866,#e04452); }
+.micro-note { color:#b4ccb8; }
+.results-footer,.results-footer p { color:#bed0c0; }
+.foot { color:#9fb6a5; }
+/* Large enough for touch and for readable secondary information. */
+.hint,.legend-row,.selection-list,.smallnote,.material-note,
+.upload-area span:not(.upload-icon),.upload-caption,
+.viewer-top p,.viewer-help,.viewer-footer,.run-caption,
+.results-footer,.results-footer p,.result-row,
+.micro-note,.foot { font-size:max(13px,1em); }
+.viewer-badge,.brand-name small,.status-chip { font-size:12px; }
+.panel label,.panel summary { font-size:14px; }
+@media(max-width:750px) {
+  .topbar { padding:13px 15px; }
+  .eyebrow-banner { padding:12px 15px; }
+  .workspace-grid { gap:15px; }
+  .viewer-stage { height:360px; }
+  .top-actions { gap:12px; }
+}
