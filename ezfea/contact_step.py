@@ -42,9 +42,9 @@ def make_two_body_step(path):
 
 def mesh_contact_step(step_file,mesh_size_mm=7.):
     """Mesh two STEP volumes independently; verify topology and boundary IDs."""
-    import gmsh
     if not (math.isfinite(mesh_size_mm) and mesh_size_mm>0):
         raise ValueError("Positive finite mesh size required")
+    import gmsh
     gmsh.initialize()
     try:
         gmsh.option.setNumber("General.Terminal",0)
