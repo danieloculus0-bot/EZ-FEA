@@ -38,6 +38,7 @@ class App(tk.Tk):
                   foreground="#a33").pack(anchor="w",pady=9)
         row=ttk.Frame(root); row.pack(fill="x",pady=6)
         ttk.Button(row,text="Open STEP part",command=self.open_file).pack(side="left")
+        ttk.Button(row,text="Demo beam",command=self.demo).pack(side="left",padx=8)
         self.path_label=ttk.Label(row,text="No file selected")
         self.path_label.pack(side="left",padx=12)
         region=ttk.LabelFrame(root,text="Connections and Load",padding=10)
@@ -72,9 +73,23 @@ class App(tk.Tk):
         self.logbox.see("end")
         self.logbox.configure(state="disabled")
 
+    def demo(self):
+        try:
+            from ezfea.demo import make_demo_step
+            self.load_file(str(make_demo_step()))
+            left=min(range(len(self.faces)),key=lambda i:abs(self.faces[i].center_mm[0]))
+            right=min(range(len(self.faces)),key=lambda i:abs(self.faces[i].center_mm[0]-100))
+            self.fix_box.current(left)
+            self.load_box.current(right)
+            self.log("Demo: 100 x 10 x 10 mm cantilever; fixed left end, 100 N downward at right end.")
+        except Exception as exc:
+            messagebox.showerror("Demo creation failed",str(exc))
+
     def open_file(self):
         selected=filedialog.askopenfilename(filetypes=[("STEP models","*.step *.stp")])
-        if not selected:return
+        if selected:self.load_file(selected)
+
+    def load_file(self,selected):
         try:
             faces=inspect_step(selected)
         except Exception as exc:
