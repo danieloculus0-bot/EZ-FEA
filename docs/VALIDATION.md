@@ -97,3 +97,13 @@ under one load direction, planar face-loading assumptions, and idealized
 fixed faces. General C3D10 claims require broader geometry, curved face
 quadrature, higher refinement, stress sampling away from singularities,
 independent analytical benchmarks and physical results. Not for design signoff.
+
+## Six-frame C3D10 comparison and stress localization — October 20, 2026
+
+[Full native 36-solve evidence](https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/39501652909). All six specimens were solved at 14/10/7 mm using first-order C3D4 and quadratic C3D10 meshes with byte-identical STEP files, identical fixtures, material and loading. All six C3D10 maximum-displacement changes from 10 to 7 mm were **0.30–1.13%**, compared with **3.97–29.06%** for C3D4.
+
+Global peak integration-point stress changed **8.28–15.72%** from 10 to 7 mm on the six C3D10 cases. The hotspot-localization diagnostic classifies actual integration-point stresses using approximate host-tetra corner centroids relative to physically fixed 20/40 mm exclusion distances from the bottom support and top loaded face. The global peak occurred about **158–161 mm above the base** in five cases, but roughly **22 mm above** in the laterally loaded rectangle.
+
+Excluding 40 mm of the **top loaded plane** reduced the fine-step peak-stress changes in five upper-hotspot cases to **3.837%, 7.791%, 5.758%, 4.575%, and 3.284%**. The rectangular lateral case remained at **13.910%**, consistent with a hotspot near the lower support. The peak-position classification is **approximate**, not the actual Gauss-point position, and comparisons of successive global maxima do not track an identical material point.
+
+**Limitations:** Improved displacement stability does not validate physical accuracy. Hotspot findings do not prove a singularity; abrupt load application and perfectly fused joints also merit study. Further work requires exact Gauss-point spatial localization, stress sampling at fixed physical coordinates, independent benchmarks, improved curved-surface load integration, and better joint idealization. No engineering sign-off is warranted.
