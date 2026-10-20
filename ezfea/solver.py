@@ -48,6 +48,8 @@ def run_calculix(inp: Path, timeout_seconds=300):
     sta, frd = inp.with_suffix(".sta"), inp.with_suffix(".frd")
     if result.returncode != 0 or not frd.is_file():
         raise RuntimeError(f"ccx failed (exit {result.returncode}); see solver.log. {result.stderr[-900:]}")
-    if not sta.exists() or "COMPLETED" not in sta.read_text(errors="replace").upper():
-        raise RuntimeError("Solver step did not report completion; review .sta, .dat, and solver.log.")
+    # CalculiX completion is reported in stdout as "Job finished".
+    # Do not apply an Abaqus-style completion-message check to the .sta file.
+    if "job finished" not in result.stdout.lower():
+        raise RuntimeError("CalculiX did not confirm Job finished; review solver.log, .sta and .dat.")
     return {"solver":Path(executable).name, "result_frd":frd.name, "solver_log":"solver.log"}
