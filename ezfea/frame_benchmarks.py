@@ -207,6 +207,11 @@ def run_suite(output_dir,mesh_size_mm=14.,*,generate_only=False):
         braced=results[2]["max_displacement_mm"]
         report["bracing_stiffness_ratio_unbraced_to_braced"]=plain/braced
         report["braced_displacement_less_than_unbraced"]=braced<plain
+        if not braced < plain:
+            raise RuntimeError(
+                "Physics regression: the idealized braced frame should "
+                "deflect less than its otherwise identical unbraced frame."
+            )
     target=Path(output_dir)/"suite_summary.json"
     target.write_text(json.dumps(report,indent=2,default=str)+"\n",encoding="utf-8")
     return report
