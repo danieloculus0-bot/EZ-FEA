@@ -380,3 +380,29 @@ summary { color:#e6f6e7; }
     will-change:auto;
   }
 }
+
+
+/* Native-solver sample selector: small additions, same dark-green design. */
+.frame-example-picker {
+  margin:13px 0 4px;
+  padding:12px;
+  border-radius:11px;
+  background:linear-gradient(155deg,#1c3221,#14231b);
+  border:1px solid #48664b;
+}
+.frame-example-picker label {color:#dff7d9;font-size:13px;}
+.frame-example-picker select {
+  min-height:44px;
+  margin:2px 0 5px;
+  background:#0d1a10;
+  border-color:#668565;
+}
+.frame-example-picker select:disabled {opacity:.65;}
+.frame-example-picker .smallnote {font-size:11px;margin:0;color:#b6d3ae;}
+.frame-connections {display:flex;flex-wrap:wrap;gap:9px;font-size:12px;color:#c8dfc4;}
+.frame-connections span {display:flex;align-items:center;gap:7px;}
+.frame-connections .smallnote {width:100%;}
+.frame-parameters {padding:12px;border:1px solid #3c5841;border-radius:10px;background:#111e14;font-size:13px;color:#dcefd7;line-height:1.6;}
+.frame-parameters strong {color:#c5ff4a;}
+#frameResultValues .result-summary {font-size:13px;line-height:1.55;margin:13px 0;}
+#frameResultValues .validation-link {display:inline-block;font-size:12px;margin:8px 0;}
