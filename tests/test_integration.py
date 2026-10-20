@@ -77,4 +77,25 @@ class SolverSmokeTest(unittest.TestCase):
             self.assertLess(record["results"]["force_balance_relative_error"], .01)
             self.assertTrue((folder_out / "analysis.frd").exists())
 
+    def test_three_mesh_sizes_are_solved_with_real_calculix(self):
+        """A refining mesh must produce actual checked physics, not generated data."""
+        from ezfea.convergence import run_refinement
+        from ezfea.demo import make_demo_step
+        if not (os.environ.get("EZFEA_CCX") or shutil.which("ccx")):
+            self.skipTest("ccx missing")
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            step = make_demo_step(root / "part.step")
+            faces = inspect_step(str(step))
+            fixed = min(faces, key=lambda f: abs(f.center_mm[0]))
+            loaded = min(faces, key=lambda f: abs(f.center_mm[0] - 100))
+            case = Analysis(str(step), fixed.tag, loaded.tag, (0, -100, 0), 12)
+            result = run_refinement(case, root / "refine", sizes_mm=(12, 8, 5))
+            self.assertEqual(len(result["records"]), 3)
+            self.assertEqual(result["engineering_validation"], "not_established")
+            self.assertTrue(all(v["force_balance_relative_error"] < .01 for v in result["records"]))
+            self.assertTrue(all(v["max_displacement_mm"] > 0 for v in result["records"]))
+            self.assertTrue(result["element_counts_strictly_increase"])
+            self.assertTrue((root / "refine" / "refinement.json").is_file())
+
 if __name__=="__main__":unittest.main()
