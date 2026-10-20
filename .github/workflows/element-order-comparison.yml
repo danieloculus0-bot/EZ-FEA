@@ -15,6 +15,8 @@ on:
       - "scripts/compare_element_orders.py"
       - "tests/test_quadratic_elements.py"
       - "tests/test_integration.py"
+      - "tests/test_element_order_comparison.py"
+      - "ezfea/stress_diagnostics.py"
       - ".github/workflows/element-order-comparison.yml"
 
 permissions:
@@ -41,16 +43,14 @@ jobs:
       - name: Check quadratic connectivity and load-distribution math
         run: |
           python -m unittest discover -s tests -p test_quadratic_elements.py -v
-      - name: C3D4 control runs (2 frames x 3 grids)
+      - name: C3D4 control runs (6 frames x 3 grids)
         run: |
           python -m ezfea.frame_convergence --out element_order_studies/C3D4 \
             --element-type C3D4 --meshes 14 10 7 \
-            --cases 02_rectangle_racking 03_braced_racking
-      - name: Genuine C3D10 solves (same 2 frames x 3 grids)
+      - name: Genuine C3D10 solves (same 6 frames x 3 grids)
         run: |
           python -m ezfea.frame_convergence --out element_order_studies/C3D10 \
             --element-type C3D10 --meshes 14 10 7 \
-            --cases 02_rectangle_racking 03_braced_racking \
             --reuse-cad-from element_order_studies/C3D4
       - name: Independently compare matching sources and displacement trends
         run: |
