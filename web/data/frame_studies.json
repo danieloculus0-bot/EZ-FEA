@@ -1,0 +1,64 @@
+{
+  "schema": "ezfea.frame_evidence.v1",
+  "source": "GitHub Actions real 3D Gmsh + CalculiX physics suite",
+  "source_run": "https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/39488256233",
+  "source_commit": "c31dc026edc829c9fefb1e54a009062ea3199639",
+  "analysis_type": "Single-material linear-static, fused solid members, C3D4, fully fixed bottom, 250 N total force, idealized connections",
+  "dimensions_mm": {
+    "width": 240,
+    "height": 180,
+    "depth": 20,
+    "member": 20
+  },
+  "mesh_nominal_mm": 14,
+  "material": {
+    "name": "A36 nominal steel",
+    "young_modulus_mpa": 200000,
+    "poisson_ratio": 0.26,
+    "yield_mpa": 250
+  },
+  "units": {
+    "deflection": "mm",
+    "stress": "MPa",
+    "force": "N"
+  },
+  "studies": [
+    {
+      "key": "01_portal_vertical",
+      "name": "Open portal frame",
+      "force_n": [
+        0,
+        0,
+        -250
+      ],
+      "max_displacement_mm": 0.0026748264094705507,
+      "max_von_mises_mpa": 1.4214700095869386,
+      "force_balance_relative_error": 3.689179857287398e-8
+    },
+    {
+      "key": "02_rectangle_racking",
+      "name": "Unbraced rectangular frame",
+      "force_n": [
+        250,
+        0,
+        0
+      ],
+      "max_displacement_mm": 0.013459161821961486,
+      "max_von_mises_mpa": 4.741886616161873,
+      "force_balance_relative_error": 6.3276272464981e-8
+    },
+    {
+      "key": "03_braced_racking",
+      "name": "Diagonally braced frame",
+      "force_n": [
+        250,
+        0,
+        0
+      ],
+      "max_displacement_mm": 0.0020449355808926715,
+      "max_von_mises_mpa": 1.122221088626532,
+      "force_balance_relative_error": 4.122490322437142e-8
+    }
+  ],
+  "notice": "These are frozen, published results from a prior native CalculiX GitHub Actions run, not an analysis of an uploaded browser model. They are experimental and single-mesh; do not use for engineering sign-off."
+}
