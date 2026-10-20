@@ -21,6 +21,14 @@ Experimental structural analysis using a genuine Gmsh tetrahedral mesher and Cal
 
 Install Gmsh and native CalculiX (`ccx`) and use `python -m ezfea.convergence --demo --meshes 12 8 5` for native multi-mesh evidence. [Full earlier installation and validation guide](docs/archive/README_2026-10-20_before_refresh.md).
 
+## Latest physics verification (October 20, 2026)
+
+- [36 real frame solves comparing C3D10 Gauss-coordinate stress reconstruction](https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/39505031019): same XYZ stress sampling; **8/24** physical probe histories met the provisional 10% two-step criterion, compared with **1/24** using element-mean stress recovery. Six other probes remain boundary-adjacent; ten are still mesh-sensitive.
+- [12 native analytical axial and bending comparison solves](https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/39505678274): at 7 mm mesh, **C3D10** cantilever deflection was 0.200384 mm against an Euler–Bernoulli reference of 0.200000 mm (0.192% difference). At the same fixed material stress point, C3D10 produced 18.979 MPa against a 19.3644 MPa analytical bending stress (1.99% difference). C3D4 was much too stiff at this mesh density.
+- [Automated native analytical benchmark workflow](https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/analytic-stress-benchmark.yml) now tests tensile and bending behavior independently of the solver code; full details, limits and methods remain in [engineering validation notes](docs/VALIDATION.md).
+
+These measurements support a limited experimental solver regression baseline, **not** general-purpose engineering certification. The [browser demo](https://danieloculus0-bot.github.io/EZ-FEA/) is deliberately unchanged.
+
 ## Unverified and out of scope
 
 - Not validated for engineering sign-off. Mesh stability is not physical accuracy, and idealized fixed-edge stresses may diverge.
@@ -29,7 +37,7 @@ Install Gmsh and native CalculiX (`ccx`) and use `python -m ezfea.convergence --
 
 ## Next engineering work
 
-Validate element formulations and convergence against analytical/physical benchmarks and build genuine mechanical joint modeling.
+Expand independent shear, torsion and stress-concentration benchmarks; model realistic load introduction and mechanical joints; extend quadratic stress recovery to curved CAD with verified isoparametric mapping.
 
 ## Reference
 
