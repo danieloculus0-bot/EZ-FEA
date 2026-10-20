@@ -126,10 +126,12 @@ def main():
     print((Path(args.out)/"BENDING_REPORT.md").read_text(encoding="utf-8"))
     quadratic=[r for r in data["rows"] if r["element_type"]=="C3D10"]
     fine=sorted(quadratic,key=lambda row:row["mesh_size_mm"])[0]
-    if (fine["relative_tip_displacement_error_against_EB"]>.10 or
-        fine["relative_outer_fiber_stress_error"]>.15 or
+    if any(r["native_force_balance_relative_error"]>.01 for r in data["rows"]):
+        raise SystemExit("Analytical benchmark failed native force equilibrium")
+    if (fine["relative_tip_displacement_error_against_EB"]>.05 or
+        fine["relative_outer_fiber_stress_error"]>.05 or
         fine["native_force_balance_relative_error"]>.01):
-        raise SystemExit("Fine-grid C3D10 cantilever differs materially from classical bending; investigate before accepting.")
+        raise SystemExit("Fine-grid C3D10 cantilever differs more than 5% from classical bending; investigate before accepting.")
 
 
 if __name__=="__main__":
