@@ -44,6 +44,36 @@ def _rigid_body_rank(nodes, supports):
     return len(basis)
 
 
+def nodal_force_components(case, mesh):
+    """All distributed forces exactly as written to CalculiX, keyed by (node, axis).
+
+    Useful to correct raw *NODE PRINT RF forces when direct CLOAD also acts on
+    the same nodes. CalculiX prints internal nodal force contributions, not an
+    already load-corrected reaction, in that overlapping-node situation.
+    """
+    extended = bool(case.connections)
+    combined = {}
+    if extended:
+        for load in case.loads:
+            weights = mesh.load_weights_by_face.get(load.face)
+            if not weights or not set(weights).issubset(mesh.nodes):
+                raise ValueError(f"Load face {load.face} has no valid surface mesh.")
+            if abs(sum(weights.values()) - 1) > 1e-8:
+                raise ValueError(f"Load face {load.face} weights must sum to one.")
+            for node, share in weights.items():
+                for axis, component in enumerate(load.force_n, 1):
+                    combined[node, axis] = combined.get((node, axis), 0.) + component*share
+    else:
+        if not set(mesh.force_weights).issubset(mesh.nodes):
+            raise ValueError("Load selection references nodes not in mesh.")
+        if abs(sum(mesh.force_weights.values()) - 1) > 1e-8:
+            raise ValueError("Force weights must sum to one.")
+        for node, share in mesh.force_weights.items():
+            for axis, component in enumerate(case.force_n, 1):
+                combined[node, axis] = component*share
+    return combined
+
+
 def write_input(case, mesh, target):
     case.validate()
     if not mesh.nodes or not mesh.elements or not mesh.fixed_nodes or not mesh.force_weights:
@@ -84,25 +114,7 @@ def write_input(case, mesh, target):
     else:
         lines.append("CONNECTION, 1, 3, 0")
     lines.append("*CLOAD")
-    combined = {}
-    if extended:
-        for load in case.loads:
-            weights = mesh.load_weights_by_face.get(load.face)
-            if not weights or not set(weights).issubset(mesh.nodes):
-                raise ValueError(f"Load face {load.face} has no valid surface mesh.")
-            if abs(sum(weights.values()) - 1) > 1e-8:
-                raise ValueError(f"Load face {load.face} weights must sum to one.")
-            for node, share in weights.items():
-                for axis, component in enumerate(load.force_n, 1):
-                    combined[node, axis] = combined.get((node, axis), 0.) + component*share
-    else:
-        if not set(mesh.force_weights).issubset(mesh.nodes):
-            raise ValueError("Load selection references nodes not in mesh.")
-        if abs(sum(mesh.force_weights.values()) - 1) > 1e-8:
-            raise ValueError("Force weights must sum to one.")
-        for node, share in mesh.force_weights.items():
-            for axis, component in enumerate(case.force_n, 1):
-                combined[node, axis] = component*share
+    combined = nodal_force_components(case, mesh)
     for (node, axis), force in sorted(combined.items()):
         if force:
             lines.append(f"{node}, {axis}, {force:.12g}")

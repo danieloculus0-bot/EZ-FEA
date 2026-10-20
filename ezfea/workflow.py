@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from .core import Analysis
 from .mesh import build_mesh
-from .solver import run_calculix, write_input
+from .solver import nodal_force_components, run_calculix, write_input
 from .results import summarize_dat
 from .bean import send_to_bean_inbox
 
@@ -40,6 +40,7 @@ def run_case(case: Analysis, output_root="runs"):
             expected_nodes=len(mesh.nodes),
             expected_elements=len(mesh.elements),
             applied_force_scale_n=case.force_scale_n,
+            applied_nodal_forces_n=nodal_force_components(case, mesh),
         )
         meta["results"] = metrics
         meta["max_displacement_mm"] = metrics["max_displacement_mm"]
