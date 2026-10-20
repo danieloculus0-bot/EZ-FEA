@@ -126,7 +126,7 @@ def write_input(case, mesh, target):
     lines.extend([
         "*NODE PRINT, NSET=ALL_NODES", "U",
         "*NODE PRINT, NSET=CONNECTION", "RF",
-        "*EL PRINT, ELSET=PART", "S",
+        "*EL PRINT, ELSET=PART", "S, COORD",
         "*NODE FILE", "U", "*EL FILE", "S", "*END STEP"
     ])
     target.write_text("\n".join(lines)+"\n", encoding="utf-8")
