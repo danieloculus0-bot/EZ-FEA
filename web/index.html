@@ -46,6 +46,13 @@
             <div class="step-head"><span class="step-num">1</span><h2>Choose your part</h2></div>
             <p class="hint">Start with a working example, or bring your own 3D file.</p>
             <button type="button" id="demoBtn" class="button button-primary button-wide">Try example beam</button>
+            <div class="frame-example-picker">
+              <label for="frameSelect">Or explore a real 3D frame study</label>
+              <select id="frameSelect" disabled aria-label="Select precomputed 3D frame study">
+                <option value="">Loading solver examples…</option>
+              </select>
+              <p class="smallnote" id="frameSelectNote">Fixed loads and dimensions · real archived CalculiX results</p>
+            </div>
             <label class="upload-area" id="dropZone" for="fileInput" tabindex="0" role="button" aria-label="Open a STEP, STL, or OBJ file">
               <span class="upload-icon" aria-hidden="true">+</span>
               <strong>Open your 3D part</strong>
@@ -62,6 +69,11 @@
               <span><i class="legend-dot green"></i> Fixed at left end</span>
               <span><i class="legend-dot orange"></i> Loaded at right end</span>
             </div>
+            <div id="frameConnections" class="frame-connections" hidden>
+              <span><i class="legend-dot green"></i> Bottom faces fixed</span>
+              <span><i class="legend-dot orange"></i> Force distributed over top face</span>
+              <p class="smallnote">Idealized restraints; not mechanical joints.</p>
+            </div>
             <div id="customConnections" hidden>
               <div class="button-row">
                 <button type="button" id="setFixedBtn" class="button button-outline small">Mark connection</button>
@@ -73,11 +85,12 @@
           </section>
           <section class="panel">
             <div class="step-head"><span class="step-num">3</span><h2>Tell us the load</h2></div>
-            <div class="fieldgroup">
+            <div class="fieldgroup" id="beamLoadControls">
               <label for="force">Downward force</label>
               <div class="input-with-unit"><input type="number" id="force" value="100" step="10" min="-1000000000" max="1000000000"><span>N</span></div>
               <p class="smallnote">Negative values push upward. 100 N is about 22.5 pounds-force.</p>
             </div>
+            <div id="frameParameters" class="frame-parameters" hidden aria-live="polite"></div>
             <div id="beamControls">
               <details>
                 <summary>Beam dimensions <span class="expand-label">Adjust</span></summary>
@@ -88,6 +101,7 @@
                 </div>
               </details>
             </div>
+            <div id="materialControls">
             <label for="material">Material</label>
             <select id="material">
               <option value="a36">A36 steel (example)</option>
@@ -95,6 +109,7 @@
               <option value="stainless">304 stainless (example)</option>
             </select>
             <div class="material-note" id="materialNote">Nominal properties, not a material certificate.</div>
+            </div>
           </section>
         </aside>
         <section class="center-column" aria-label="3D part view">
@@ -157,6 +172,14 @@
                 <div class="stress-track"><div class="stress-fill" id="stressFill"></div></div>
                 <p id="resultSummary" class="result-summary"></p>
                 <div class="micro-note">Simplified beam model only. Not a prediction of a complex part's failure.</div>
+              </div>
+              <div id="frameResultValues" hidden>
+                <div class="result-row"><span>Peak displacement</span><strong id="frameDeflection">—</strong></div>
+                <div class="result-row"><span>Peak von Mises stress</span><strong id="frameStress">—</strong></div>
+                <div class="result-row"><span>Force equilibrium error</span><strong id="frameBalance">—</strong></div>
+                <p id="frameResultSummary" class="result-summary"></p>
+                <p id="frameResultProvenance" class="micro-note"></p>
+                <a id="frameSolverLink" class="validation-link" target="_blank" rel="noopener noreferrer" href="https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/frame-physics.yml">Review this real solver run ↗</a>
               </div>
               <div id="cadNoSolver" hidden>
                 <span class="empty-icon" aria-hidden="true">◇</span>
