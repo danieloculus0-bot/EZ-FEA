@@ -20,6 +20,7 @@ jobs:
           node --check web/main.mjs
           node --check web/viewer.mjs
           node --check web/beam.mjs
+          node --check web/bean_advisor.mjs
       - name: Test browser finite elements
         run: node --test web/tests/*.test.mjs
       - name: Unit test
