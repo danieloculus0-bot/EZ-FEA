@@ -139,7 +139,7 @@ def report_markdown(report):
         f"Screening criterion: both successive changes ≤ {report['peak_stress_screen_pct']}%. "
         "This is NOT a stress-convergence guarantee.",
         "",
-        "> This report measures sensitivity to meshing, NOT accuracy. Global peak",
+        "> This report is NOT solver validation, only sensitivity to meshing. Global peak",
         "> first-order C3D4 stress may change substantially at fully fixed corners,",
         "> and first-order tets can be overly stiff in bending. No physical",
         "> test, higher-order element, independent benchmark, or qualified",
