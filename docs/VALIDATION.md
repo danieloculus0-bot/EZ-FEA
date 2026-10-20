@@ -117,3 +117,24 @@ Excluding 40 mm of the **top loaded plane** reduced the fine-step peak-stress ch
 **Actual outcome:** among the 24 C3D10 probe histories, 1 met the provisional 10% sensitivity screening over both adjacent mesh steps, 17 remained mesh sensitive with this recovery, and 6 were flagged for boundary-adjacent probe placement. One representative top-member probe had a fine-step change of 1.778% (braced lateral frame), compared with 78.604% for the same XYZ in the braced vertical-load case. Both values come from actual completed CalculiX data, not inferred stress contours.
 
 **Interpretation:** quadratic-element displacement stability does not imply stable local stress. The piecewise-constant tensor-average recovery may cause significant mesh dependence even away from true physical hotspots; this experiment does not establish that the underlying stress field has failed to converge. The next appropriate improvement is true validated stress interpolation/recovery at the fixed material coordinates (with accurate quadratic element mapping and correct CalculiX Gauss-point ordering), followed by independent analytical or physical benchmark comparisons. The existing global maximum and 20/40 mm band diagnostics are retained as separate, non-certifying evidence.
+
+## C3D10 physical Gauss stress recovery and analytical checks — October 20, 2026
+
+**New stress reconstruction:** EZ-FEA now asks CalculiX for both S (six-component integration-point Cauchy stress) and COORD (native physical integration-point XYZ). The independent interpolation module matches all four C3D10 stress/coordinate observations by element ID and integration-point ID. It reconstructs a *local affine stress tensor* at a specified fixed physical XYZ, then evaluates von Mises from the reconstructed tensor. No hard-coded Gauss order or shifting to a maximum-stress element is involved. Incomplete coordinate output, duplicate IDs, degenerate integration-point geometry or non-straight-sided C3D10 cells are rejected. The original element-mean technique remains recorded as a control.
+
+[**Actual 36-solve same-coordinate comparison**](https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/39505031019): across the 24 fixed material probe series, **8** affine-Gauss C3D10 histories met both consecutive 10% mesh-sensitivity screens with no location warning; **10** remained sensitive and **6** were near a mesh-element boundary. The earlier element-mean method had **1** unflagged stable, **17** sensitive, **6** boundary warnings. This improvement demonstrates more consistent recovered stress for these test models; it does **not** prove general stress convergence or experimental accuracy.
+
+**Independent reference problems:** [Native 12-solve axial + bending benchmark and full solver archive](https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/39505678274). Both C3D4 and C3D10 solved the same homogeneous 100 × 10 × 10 mm bar with 100 N loads at 14/10/7 mm requested meshes. The references are textbook one-dimensional mechanics of materials formulas and are *not* an exact constrained three-dimensional boundary-value solution.
+
+| Finest 7 mm mesh | Nominal analytical reference | C3D4 actual | C3D10 actual |
+|---|---:|---:|---:|
+| Axial stress at interior point (MPa) | 1.0 | approximately 1.0 | approximately 1.0 |
+| Axial end displacement (mm) | 0.000500 | 0.000498488 | 0.000498683 |
+| Transverse cantilever max displacement (mm) | 0.200000 | 0.102513 | **0.200384** |
+| Local outer-fiber abs(sigma_xx) at fixed XYZ (51.1, 8.3, 4.3), MPa | 19.3644 | 10.9499 | **18.9790** |
+
+C3D10's finest-grid cantilever response differed by **0.192% in maximum displacement** and **1.99% in sampled bending stress** from the independent Euler–Bernoulli prediction. C3D4 differed by approximately **48.7% in deflection** and **43.5% in stress**. The shear-corrected Timoshenko 1D tip estimate is 0.201512 mm. The native analytical workflow enforces **≤2%** nominal axial discrepancy, **≤5%** finest-mesh quadratic bending discrepancy and **≤1%** force-balance residual.
+
+**Method limitations:** The affine Gauss-tensor field can be extrapolated within an element outside the convex hull of integration points; stresses are not forced continuous across elements; curved ten-node tetrahedral geometry needs a verified nonlinear coordinate mapping. The analytical beam assumes slender small-deflection behavior, while real CalculiX models have finite cross sections, end-face tractions and full face constraints. Good agreement for these basic load cases must not be generalized to welds, bolts, contact, yielding, complex geometry or certified design signoff.
+
+**Next tests:** independent torsion and transverse shear references, spatial stress error checks on curved CAD, physically distributed load and fixture verification, and mechanical joint/contact physics.
