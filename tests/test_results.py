@@ -71,6 +71,48 @@ class CalculixResultTests(unittest.TestCase):
         self.assertEqual(result["direct_applied_forces_on_connection_nodes_n"], [-10., 0., 0.])
         self.assertEqual(result["force_balance_check"], "pass")
 
+    def test_applied_eccentric_force_and_reaction_moments_balance(self):
+        result_file=self.setup_file("""
+ displacements (vx,vy,vz) for set ALL_NODES and time 1.0
+ 1 0 0 0
+ 2 0 0 0
+ 3 0.001 0 0
+
+ forces (fx,fy,fz) for set CONNECTION and time 1.0
+ 1 -50 0 0
+ 2 -50 0 0
+
+ stresses (elem, integ.pnt.,sxx,syy,szz,sxy,sxz,syz) for set PART and time 1.0
+ 8 1 10 0 0 0 0 0
+""")
+        positions={1:(0.,0.,0.),2:(0.,0.,2.),3:(10.,0.,1.)}
+        force={(3,1):100.}
+        info=summarize_dat(result_file,(100.,0.,0.),250,
+                           applied_nodal_forces_n=force,
+                           node_positions_mm=positions)
+        self.assertEqual(info["force_balance_check"],"pass")
+        self.assertEqual(info["moment_balance_check"],"pass")
+        self.assertAlmostEqual(info["applied_moment_about_origin_nmm"][1],100.)
+        self.assertAlmostEqual(info["reaction_moment_about_origin_nmm"][1],-100.)
+        invalid=self.setup_file("""
+ displacements (vx,vy,vz) for set ALL_NODES and time 1.0
+ 1 0 0 0
+ 2 0 0 0
+ 3 0.001 0 0
+
+ forces (fx,fy,fz) for set CONNECTION and time 1.0
+ 1 -100 0 0
+ 2 0 0 0
+
+ stresses (elem, integ.pnt.,sxx,syy,szz,sxy,sxz,syz) for set PART and time 1.0
+ 8 1 10 0 0 0 0 0
+""")
+        checked=summarize_dat(invalid,(100.,0.,0.),250,
+                              applied_nodal_forces_n=force,
+                              node_positions_mm=positions)
+        self.assertEqual(checked["force_balance_check"],"pass")
+        self.assertEqual(checked["moment_balance_check"],"review")
+
     def test_out_of_balance_marked_for_review(self):
         dat=self.setup_file(FIXTURE.replace("-1.000000E+02","-7.000000E+01"))
         result=summarize_dat(dat,(100,0,0),250)
