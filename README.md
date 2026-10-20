@@ -15,6 +15,8 @@ Experimental structural analysis using a genuine Gmsh tetrahedral mesher and Cal
 
 - Real STEP single-solid linear-static solves, multi-face fixtures/loads, numerical reaction-force **and reaction-moment** equilibrium checks.
 - **Native force introduction:** choose an entire-face distributed load or a positionable Gaussian traction footprint with specified total XYZ force, center XYZ and spread (mm). Real T3/T6 surface quadrature produces equivalent FE nodal loads and reports the actual resultant force, eccentric moment and reaction balance. This approximates a pressure pad; it does **not** simulate nonlinear physical contact.
+- **True native normal pressure (experimental backend):** CalculiX `*DSLOAD P` applied to real tetrahedral exterior faces, independently checked against pressure-integrated total force and support reaction moments. The [four-solve native benchmark](https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/39508482477) passed for C3D4 and C3D10.
+- **Real separable contact proof:** two independent C3D8 steel solids with a genuine CalculiX frictionless surface-to-surface contact pair transferred **962.7 N** in compression, versus **0 N** with the contact pair disabled and approximately **0 N** during separation. This is an [isolated controlled specimen](docs/PRESSURE_CONTACT.md), not arbitrary multibody STEP support.
 - Six native frame specimens and repeatable multi-grid mesh refinement; C3D4/C3D10 element-order studies have independent CI.
 - [Browser demo](https://danieloculus0-bot.github.io/EZ-FEA/) performs simplified beam physics and displays archived native results. Arbitrary uploaded CAD is **preview only**.
 
@@ -34,16 +36,17 @@ These measurements support a limited experimental solver regression baseline, **
 ## Unverified and out of scope
 
 - Not validated for engineering sign-off. Mesh stability is not physical accuracy, and idealized fixed-edge stresses may diverge.
-- Fused frame solids do not demonstrate realistic welds, pin joints, actuators, contact or nonlinear multi-body physics.
+- The generic `Analysis` API still handles only one STEP solid; the independently verified two-brick frictionless contact specimen does **not** constitute arbitrary STEP assemblies, welds, pins, bolts or actuator joint support.
 - Native solver CI success and the browser's educational beam result are different verification scopes.
 
 ## Next engineering work
 
-Continue with independent shear/torsion/stress-concentration benchmarks, genuine pressure-normal or pad-contact laws, realistic mechanical joints, and curved-element stress recovery with verified isoparametric mapping.
+Integrate the verified native pressure backend into user-defined `Analysis` loads; preserve independent STEP solids and pair their CAD surfaces for general two-body contact; verify contact stress, penetration and convergence. Add independent shear/torsion benchmarks and curved-element stress recovery.
 
 ## Reference
 
 - [Browser demo](https://danieloculus0-bot.github.io/EZ-FEA/)
 - [Validation report](docs/VALIDATION.md)
+- [Native pressure & separable contact evidence](docs/PRESSURE_CONTACT.md)
 - [Mesh refinement code](ezfea/convergence.py)
 - [**Archived full README: development history, experiments and original setup details**](docs/archive/README_2026-10-20_before_refresh.md)
