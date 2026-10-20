@@ -54,17 +54,50 @@ jobs:
           tmpdir="$(mktemp -d)"
           trap 'rm -rf "$tmpdir"' EXIT
           for run in $runs; do
-            rm -f "$tmpdir/frame_studies.json"
-            if gh run download "$run" --repo "$GITHUB_REPOSITORY" \
-                 --name EZ-FEA-web-physics-data --dir "$tmpdir"; then
-              python -m json.tool "$tmpdir/frame_studies.json" >/dev/null
-              cp "$tmpdir/frame_studies.json" web/data/frame_studies.json
-              echo "Loaded verified physics data from run $run"
-              found=1
-              break
-            fi
+            # A separate extraction directory prevents GitHub CLI from
+            # colliding with partially extracted files from a prior attempt.
+            for attempt in 1 2; do
+              download_dir="$tmpdir/${run}_${attempt}"
+              mkdir -p "$download_dir"
+              if gh run download "$run" --repo "$GITHUB_REPOSITORY" \
+                   --name EZ-FEA-web-physics-data --dir "$download_dir"; then
+                python - "$download_dir/frame_studies.json" "$run" <<'PY'
+import json, math, pathlib, sys
+from ezfea.frame_benchmarks import STUDIES
+
+path=pathlib.Path(sys.argv[1])
+data=json.loads(path.read_text(encoding="utf-8"))
+url=f"https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/{sys.argv[2]}"
+rows=data.get("studies")
+if (data.get("schema")!="ezfea.frame_evidence.v1" or
+    data.get("source_run")!=url or
+    not isinstance(rows,list) or
+    [r.get("key") for r in rows] != [s.key for s in STUDIES]):
+    raise SystemExit("Incorrect native solver evidence identity/provenance")
+for row in rows:
+    if (row.get("force_balance_check")!="pass" or
+        not all(isinstance(row.get(k),(int,float)) and math.isfinite(row[k])
+                for k in ("max_displacement_mm","max_von_mises_mpa",
+                          "force_balance_relative_error")) or
+        row["max_displacement_mm"]<=0 or row["max_von_mises_mpa"]<=0 or
+        not 0<=row["force_balance_relative_error"]<=0.01):
+        raise SystemExit("Rejected incomplete/nonfinite native FEA result")
+print(f"Verified {len(rows)} genuine archived frame results from run {sys.argv[2]}")
+PY
+                cp "$download_dir/frame_studies.json" web/data/frame_studies.json
+                echo "Loaded verified physics data from run $run"
+                found=1
+                break
+              fi
+              echo "Download of run $run failed (attempt $attempt); retrying if available."
+            done
+            if [[ "$found" == 1 ]]; then break; fi
           done
           if [[ "$found" == 0 ]]; then
+            if [[ "$GH_EVENT_NAME" == "workflow_run" ]]; then
+              echo "::error::Native solver completed, but verified evidence was not retrieved. Refusing stale deployment."
+              exit 1
+            fi
             echo "No published native dataset yet; keeping checked-in fallback."
           fi
           python -m json.tool web/data/frame_studies.json >/dev/null
