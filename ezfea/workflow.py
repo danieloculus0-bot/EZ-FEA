@@ -14,8 +14,11 @@ def run_case(case: Analysis, output_root="runs"):
     input_path = Path(case.step_file)
     out = Path(output_root) / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     out.mkdir(parents=True, exist_ok=False)
+    import shutil
+    source_copy = out / ("source"+input_path.suffix.lower())
+    shutil.copy2(input_path, source_copy)
     meta = {"status":"preparing", "input_sha256":hashlib.sha256(input_path.read_bytes()).hexdigest(),
-            "units":"N/mm/MPa", "model":case.as_dict(),
+            "units":"N/mm/MPa", "source_file":source_copy.name, "model":case.as_dict(),
             "disclaimer":"EXPERIMENTAL - NOT VALIDATED FOR ENGINEERING SIGN-OFF"}
     (out/"case.json").write_text(json.dumps(meta,indent=2)+"\n", encoding="utf-8")
     try:
