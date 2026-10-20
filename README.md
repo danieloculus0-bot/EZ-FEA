@@ -131,3 +131,25 @@ python -m ezfea.frame_benchmarks --out runs/frame_benchmarks --mesh-mm 14
 This is **regression evidence, not an independently validated welded-frame benchmark**. The members are fused as one solid; there are no weld beads, joint compliance, hinge pins, actuator connectors, multi-part contact or demonstrated mesh convergence. GitHub Pages remains a separate browser-only beam calculation/CAD preview, **not the server-side 3D CalculiX engine**.
 
 [Portfolio-wide audit](https://github.com/danieloculus0-bot/Axiom_Beta/blob/main/docs/PORTFOLIO_AUDIT_2026-10-20.md).
+
+## Three-grid mesh-refinement evidence
+
+Run three or more real Gmsh/CalculiX solves of one STEP solid, material, load,
+and fixture arrangement. The only input varied is the requested mesh size.
+The output \`refinement.json\` records native solver evidence, mesh element
+counts, adjacent displacement changes and global peak-stress changes.
+
+~~~sh
+python -m ezfea.convergence --demo --meshes 12 8 5 --out runs/refinement_demo
+~~~
+
+For your own STEP, use \`--step part.step --fixed-face N --loaded-face M\`
+and the same mesh flags. Multi-face load/constraint scenarios are supported
+from Python through \`run_refinement(case, ...)\`.
+
+This is an **experimental numerical sensitivity study**, *not* NAFEMS
+validation or engineering sign-off. Two relatively similar displacement
+results do not prove accuracy, stress singularities may grow with refinement,
+and first-order C3D4 elements can lock in bending. Record independent
+analytical benchmarks, physical experiments and appropriate higher-order
+elements before professional use.

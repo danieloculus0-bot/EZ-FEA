@@ -16,3 +16,17 @@ ASME V&V 10-2019 (R2025): https://www.asme.org/codes-standards/find-codes-standa
 NAFEMS: https://www.nafems.org/
 
 BEAN can recommend hypotheses and run comparisons, but it may not alter benchmark truth values or claim analysis it has not performed.
+
+## Automated refinement evidence
+
+\`python -m ezfea.convergence --demo --meshes 12 8 5\` runs the
+same physical cantilever with three C3D4 meshes. Every record comes from a
+completed Gmsh/CalculiX solve with verified support-force equilibrium.
+\`refinement.json\` includes mesh counts and displacement/stress differences.
+The report calls a pair of changes \`stable_at_checked_mesh_sizes\` only
+when the two most recent relative displacement changes are below the
+specified tolerance and the element counts increase. That flag means
+**numerical observation only**; \`engineering_validation\` remains
+\`not_established\` for every report. Max stress is not presumed to
+converge at restrained edges. The native CI smoke test runs a three-grid
+case on real CalculiX instead of supplying preset numbers.
