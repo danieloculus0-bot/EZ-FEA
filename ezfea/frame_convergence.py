@@ -111,7 +111,41 @@ def analyze_recorded_refinements(cases, *, displacement_tolerance=.05,
                                                          for v in shifts[-2:])
                                    else "mesh_sensitive_at_checked_mesh_sizes"),
                 })
+        load_band_trends=None
+        peak_load_distances=None
+        if (band_trends is not None and
+            all(d.get("outside_load_band_max_mpa") is not None for d in diagnostics)):
+            ref_axis=diagnostics[0]["load_plane_axis"]
+            ref_position=diagnostics[0]["load_plane_coordinate_mm"]
+            if any(d["load_plane_axis"]!=ref_axis or
+                   abs(d["load_plane_coordinate_mm"]-ref_position)>1e-6
+                   for d in diagnostics):
+                raise ValueError("Load plane changed across mesh refinements")
+            peak_load_distances=[
+                d["global_peak_host_tet_centroid_distance_from_load_mm"]
+                for d in diagnostics]
+            load_band_trends=[]
+            for i,limit in enumerate(limits):
+                values=[d["outside_load_band_max_mpa"][i] for d in diagnostics]
+                if any(v is None or not isinstance(v,(int,float)) or
+                       not math.isfinite(v) or v<=0 for v in values):
+                    load_band_trends.append({"min_distance_mm":limit,
+                                             "observation":"insufficient_interior_gauss_points"})
+                    continue
+                changes=[relative_change(a,b) for a,b in zip(values,values[1:])]
+                load_band_trends.append({
+                    "min_distance_mm":limit,
+                    "max_stress_mpa":values,
+                    "adjacent_relative_changes":changes,
+                    "last_change_pct":100*changes[-1],
+                    "observation":("limited_sensitivity_at_checked_mesh_sizes"
+                                   if increasing and all(v<=peak_stress_tolerance
+                                                         for v in changes[-2:])
+                                   else "mesh_sensitive_at_checked_mesh_sizes"),
+                })
         out.append({
+            "load_stress_band_trends":load_band_trends,
+            "peak_host_tet_centroid_distance_from_load_mm":peak_load_distances,
             "stress_band_trends":band_trends,
             "peak_host_tet_centroid_distance_mm":peak_distances,
             "key":entry["key"],
