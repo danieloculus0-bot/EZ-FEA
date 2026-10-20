@@ -287,6 +287,11 @@ function start(){
     const image=byId("beanMascot");
     if(!image.src.endsWith("/assets/bean-icon.svg"))image.src="./assets/bean-icon.svg";
   });
+  byId("beanMascot").addEventListener("animationend",(event)=>{
+    if(event.animationName==="bean-nod"){
+      byId("beanMascot").parentElement.classList.remove("bean-respond");
+    }
+  });
   byId("beanFrameStudies").addEventListener("toggle",event=>{
     if(event.target.open && !event.target.dataset.loaded){
       event.target.dataset.loaded="yes";
