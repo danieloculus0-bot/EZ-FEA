@@ -83,6 +83,32 @@ export function toCSV(matrix) {
   const csv=v=> '"' + String(v??"").replaceAll('"','""') + '"';
   return [cols.join(","),...matrix.rows.map(row=>cols.map(c=>csv(row[c])).join(","))].join("\r\n")+"\r\n";
 }
+export function groundMatrix(matrix, groundId) {
+  const chosen=Number(groundId);
+  const ids=(matrix.components??[]).map(x=>Number(x.id));
+  if(!Number.isInteger(chosen)||!ids.includes(chosen))throw new Error("Ground component must belong to the assembly");
+  const adjacency=new Map(ids.map(id=>[id,new Set()]));
+  for(const row of matrix.rows){
+    const a=Number(row.component_a),b=Number(row.component_b);
+    if(!adjacency.has(a)||!adjacency.has(b)) throw new Error("Joint references a missing component");
+    adjacency.get(a).add(b);
+    adjacency.get(b).add(a);
+  }
+  const depth=new Map([[chosen,0]]);
+  const queue=[chosen];
+  for(let pos=0;pos<queue.length;pos++){
+    const id=queue[pos];
+    for(const next of adjacency.get(id)){
+      if(!depth.has(next)){depth.set(next,depth.get(id)+1);queue.push(next);}
+    }
+  }
+  return {...matrix,ground_component:chosen,
+    components:matrix.components.map(c=>({...c,
+      grounded:Number(c.id)===chosen,
+      ground_depth:depth.get(Number(c.id))??null,
+      reachable_from_ground:depth.has(Number(c.id))
+    }))};
+}
 export function userSelectionCounts(matrix) {
   return matrix.rows.reduce((t,r)=>(t[r.joint_type]=(t[r.joint_type]??0)+1,t),{});
 }
