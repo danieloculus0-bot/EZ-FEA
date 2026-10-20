@@ -40,6 +40,29 @@ class SolverSmokeTest(unittest.TestCase):
             self.assertLess(metrics["force_balance_relative_error"],.01)
 
 
+    def test_real_quadratic_c3d10_beam(self):
+        """Gmsh's true 10-node elements must solve with actual CalculiX."""
+        from dataclasses import replace
+        from ezfea.demo import make_demo_step
+        if not (os.environ.get("EZFEA_CCX") or shutil.which("ccx")):
+            self.skipTest("ccx missing")
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder)
+            step=make_demo_step(root/"quad.step")
+            faces=inspect_step(str(step))
+            fixed=min(faces,key=lambda f:abs(f.center_mm[0]))
+            loaded=min(faces,key=lambda f:abs(f.center_mm[0]-100))
+            case=Analysis(str(step),fixed.tag,loaded.tag,(0,-100,0),10,
+                          element_type="C3D10")
+            out=run_case(case,root/"runs")
+            record=json.loads((out/"case.json").read_text())
+            self.assertEqual(record["status"],"completed",record)
+            self.assertEqual(record["mesh"]["element_type"],"C3D10")
+            self.assertIn("*ELEMENT, TYPE=C3D10", (out/"analysis.inp").read_text())
+            self.assertLess(record["results"]["force_balance_relative_error"],.01)
+            self.assertGreater(record["results"]["max_displacement_mm"],0)
+            self.assertGreater(record["results"]["max_von_mises_mpa"],0)
+
     def test_multi_region_actual_calculix_solve(self):
         """Real native solve with two support regions and two non-collinear force loads."""
         from ezfea.core import FaceConstraint, FaceLoad
