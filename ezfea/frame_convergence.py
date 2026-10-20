@@ -17,9 +17,56 @@ import shutil
 from .convergence import run_refinement, relative_change
 from .frame_benchmarks import STUDIES, create_step, case_from_step, geometry_definition_sha256
 from .stress_probes import frame_stress_probes, RECOVERY
+from .stress_interpolation import AFFINE_RECOVERY
 
 
 DEFAULT_MESHES_MM = (14., 10., 7.)
+
+def _summarize_fixed_probe_series(records, field, required_method, tolerance, increasing):
+    """Cross-grid consistency for identical physical XYZ stress evaluation."""
+    inputs=[row.get(field) for row in records]
+    if not any(value is not None for value in inputs):
+        return None
+    if any(not isinstance(item,dict) or item.get("schema")!="ezfea.fixed_stress_probes.v1"
+           for item in inputs):
+        raise ValueError(f"Incomplete fixed stress records: {field}")
+    names=list(inputs[0]["probes"])
+    if not names or any(set(item["probes"])!=set(names) for item in inputs):
+        raise ValueError(f"Probe names changed across grids: {field}")
+    trends=[]
+    for name in names:
+        readings=[item["probes"][name] for item in inputs]
+        positions=[r["coordinate_mm"] for r in readings]
+        if any(x!=positions[0] for x in positions):
+            raise ValueError(f"{name}: physical XYZ probe moved between refinements")
+        if any(r.get("recovery")!=required_method or
+               not isinstance(r.get("von_mises_mpa"),(int,float)) or
+               not math.isfinite(r["von_mises_mpa"]) or
+               r["von_mises_mpa"]<0 for r in readings):
+            raise ValueError(f"{name}: missing or invalid native {required_method} tensor")
+        values=[r["von_mises_mpa"] for r in readings]
+        changes=[relative_change(a,b) for a,b in zip(values,values[1:])]
+        quality=[r.get("location_quality") for r in readings]
+        okay=all(q=="inside_element" for q in quality)
+        trends.append({
+            "name":name,
+            "coordinate_mm":positions[0],
+            "recovery":required_method,
+            "von_mises_mpa":values,
+            "adjacent_relative_changes":changes,
+            "last_change_pct":100*changes[-1],
+            "host_element_ids":[r["host_element_id"] for r in readings],
+            "location_quality":quality,
+            "min_barycentric_margins":[r["inside_corner_tetra_margin"] for r in readings],
+            "observation":(
+                "near_element_boundary_check_probe" if not okay
+                else "limited_sensitivity_at_checked_mesh_sizes"
+                if increasing and all(v<=tolerance for v in changes[-2:])
+                else "mesh_sensitive_at_checked_mesh_sizes"
+            ),
+        })
+    return trends
+
 
 
 def analyze_recorded_refinements(cases, *, displacement_tolerance=.05,
@@ -80,47 +127,11 @@ def analyze_recorded_refinements(cases, *, displacement_tolerance=.05,
             # This analyzer normally uses the same displacement tolerance
             # passed into run_refinement. Mismatch indicates an invalid report.
             raise ValueError("Raw convergence assessment mismatches parameters")
-        probe_data=[r.get("fixed_coordinate_stress") for r in records]
-        fixed_probe_trends=None
-        if any(p is not None for p in probe_data):
-            if any(not isinstance(p,dict) or p.get("schema")!="ezfea.fixed_stress_probes.v1"
-                   for p in probe_data):
-                raise ValueError("Fixed-coordinate stress evidence missing on one or more meshes")
-            names=list(probe_data[0]["probes"])
-            if not names or any(set(p["probes"])!=set(names) for p in probe_data):
-                raise ValueError("Fixed stress probe names changed across mesh sizes")
-            fixed_probe_trends=[]
-            for name in names:
-                readings=[item["probes"][name] for item in probe_data]
-                positions=[reading["coordinate_mm"] for reading in readings]
-                if any(x!=positions[0] for x in positions):
-                    raise ValueError(f"{name}: physical XYZ probe moved between refinements")
-                if any(reading.get("recovery")!=RECOVERY or
-                       not isinstance(reading.get("von_mises_mpa"),(int,float)) or
-                       not math.isfinite(reading["von_mises_mpa"]) or
-                       reading["von_mises_mpa"]<0 for reading in readings):
-                    raise ValueError(f"{name}: unavailable native probe tensor")
-                recovered=[reading["von_mises_mpa"] for reading in readings]
-                changes=[relative_change(a,b) for a,b in zip(recovered,recovered[1:])]
-                quality=[reading.get("location_quality") for reading in readings]
-                healthy=all(q=="inside_element" for q in quality)
-                fixed_probe_trends.append({
-                    "name":name,
-                    "coordinate_mm":positions[0],
-                    "recovery":RECOVERY,
-                    "von_mises_mpa":recovered,
-                    "adjacent_relative_changes":changes,
-                    "last_change_pct":100*changes[-1],
-                    "host_element_ids":[r["host_element_id"] for r in readings],
-                    "location_quality":quality,
-                    "min_barycentric_margins":[r["inside_corner_tetra_margin"] for r in readings],
-                    "observation":(
-                        "near_element_boundary_check_probe" if not healthy
-                        else "limited_sensitivity_at_checked_mesh_sizes"
-                        if increasing and all(v<=peak_stress_tolerance for v in changes[-2:])
-                        else "mesh_sensitive_at_checked_mesh_sizes"
-                    ),
-                })
+        fixed_probe_trends=_summarize_fixed_probe_series(
+            records,"fixed_coordinate_stress",RECOVERY,peak_stress_tolerance,increasing)
+        affine_probe_trends=_summarize_fixed_probe_series(
+            records,"fixed_coordinate_stress_affine",AFFINE_RECOVERY,
+            peak_stress_tolerance,increasing)
         diagnostics=[r.get("stress_distance_bands") for r in records]
         band_trends=None
         peak_distances=None
@@ -186,6 +197,7 @@ def analyze_recorded_refinements(cases, *, displacement_tolerance=.05,
                                    else "mesh_sensitive_at_checked_mesh_sizes"),
                 })
         out.append({
+            "fixed_coordinate_affine_stress_trends":affine_probe_trends,
             "fixed_coordinate_stress_trends":fixed_probe_trends,
             "load_stress_band_trends":load_band_trends,
             "peak_host_tet_centroid_distance_from_load_mm":peak_load_distances,
@@ -268,6 +280,36 @@ def report_markdown(report):
             "A low last-step change is not independent material validation;",
             "stress at a fixed point remains approximate and can be affected",
             "by local mesh topology or nearby stress discontinuities.",
+        ])
+    if any(r.get("fixed_coordinate_affine_stress_trends") for r in report["studies"]):
+        lines.extend([
+            "",
+            "### C3D10 matched physical Gauss-point stress interpolation",
+            "",
+            "Uses CalculiX S and COORD pairs (four actual Gauss tensors and physical",
+            "positions per straight-sided element), fitting the affine tensor field",
+            "and evaluating it at exactly the same XYZ on each mesh.",
+            "",
+            "| Case | Probe | Old element-mean last Δ | Gauss-affine last Δ | Gauss-affine observation |",
+            "|---|---|---:|---:|---|",
+        ])
+        for row in report["studies"]:
+            old={p["name"]:p for p in row.get("fixed_coordinate_stress_trends") or []}
+            for p in row.get("fixed_coordinate_affine_stress_trends") or []:
+                baseline=old.get(p["name"])
+                if baseline is None or baseline["coordinate_mm"]!=p["coordinate_mm"]:
+                    raise ValueError("Affine and legacy probe sources do not match")
+                lines.append(
+                    f"| {row['key']} | {p['name']} | "
+                    f"{baseline['last_change_pct']:.3g}% | "
+                    f"{p['last_change_pct']:.3g}% | {p['observation']} |"
+                )
+        lines.extend([
+            "",
+            "Gauss-field interpolation is exact for an affine tensor field",
+            "in a straight-sided homogeneous linear-elastic C3D10. It remains",
+            "local, can extrapolate beyond the Gauss hull and has no guarantees",
+            "of stress continuity across element boundaries or design validity.",
         ])
     lines.extend([
         "",
