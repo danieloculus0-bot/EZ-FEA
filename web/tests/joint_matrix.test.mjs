@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   JOINT_TYPES, sampleMatrix, validateMatrix, setJointType, fillDown,
-  pasteColumn, toCSV
+  pasteColumn, toCSV, groundMatrix
 } from "../joint_matrix_core.mjs";
 
 test("Joint Matrix dropdown preserves mechanical physics unassigned",()=>{
@@ -48,4 +48,15 @@ test("JSON schema and spreadsheet CSV keep CAD mate identities",()=>{
   corrupted.rows[1].joint_id="J-002";
   corrupted.rows[1].mechanical_model="ideal_bonded";
   assert.throws(()=>validateMatrix(corrupted),/Physical solver/);
+});
+
+test("grounding a different part recomputes graph distance without changing joints",()=>{
+  const original=sampleMatrix();
+  const changed=groundMatrix(original,3);
+  assert.equal(changed.ground_component,3);
+  assert.equal(changed.components.find(c=>c.id===3).grounded,true);
+  assert.equal(changed.components.find(c=>c.id===1).ground_depth,2);
+  assert.ok(changed.components.every(c=>c.reachable_from_ground));
+  assert.ok(changed.rows.every(r=>r.joint_type==="Unassigned"));
+  assert.throws(()=>groundMatrix(original,999),/belong/);
 });
