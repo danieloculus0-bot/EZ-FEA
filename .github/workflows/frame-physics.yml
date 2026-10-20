@@ -1,0 +1,47 @@
+name: Frame Specimen Physics Suite
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "ezfea/frame_benchmarks.py"
+      - "ezfea/core.py"
+      - "ezfea/mesh.py"
+      - "ezfea/solver.py"
+      - "ezfea/results.py"
+      - "ezfea/workflow.py"
+      - "tests/test_frame_specimens.py"
+      - ".github/workflows/frame-physics.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  frame-fixtures:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install mesher and actual static solver
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y calculix-ccx libglu1-mesa
+          python -m pip install -r requirements.txt
+      - name: Verify repeatable frame definitions
+        run: python -m unittest discover -s tests -p test_frame_specimens.py -v
+      - name: Solve all three actual 3D frame specimens
+        run: python -m ezfea.frame_benchmarks --out frame_benchmark_artifacts --mesh-mm 14
+      - name: Print solver summary
+        run: cat frame_benchmark_artifacts/suite_summary.json
+      - name: Archive modeled solids and complete solver evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: EZ-FEA-frame-physics-studies
+          path: frame_benchmark_artifacts/
+          if-no-files-found: warn
+          retention-days: 14
