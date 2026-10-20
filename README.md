@@ -49,7 +49,7 @@ The workflow may also be manually started by a repo maintainer in **Actions → 
 
 EZ-FEA now accepts an explicit `Analysis(..., element_type="C3D10")` option alongside its original `"C3D4"` default. The real Gmsh pipeline generates ten-node tetrahedra, converts Gmsh's midside edge order into CalculiX's C3D10 convention, constrains quadratic face nodes, and integrates uniformly distributed total forces using the second-order triangular face shape functions. The CalculiX input deck and result archive identify the actual element type; unknown/mismatched element types are rejected.
 
-**Native solver verification:** `tests/test_integration.py` runs a genuine C3D10 cantilever solve through Gmsh and CalculiX, including stress, deflection and reaction-force checks. The [C3D4 vs C3D10 Native Comparison](https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/element-order-comparison.yml) uses byte-identical STEP geometry, matching fixtures/loads, and 14/10/7 mm grids for a rectangular and braced frame. The workflow archives native solver records and an independent side-by-side comparison report. Use the **latest successful workflow run** for actual observations, rather than assuming a quadratic element must converge.
+**Native solver verification:** `tests/test_integration.py` runs a genuine C3D10 cantilever solve through Gmsh and CalculiX, including stress, deflection and reaction-force checks. The [C3D4 vs C3D10 Native Comparison](https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/element-order-comparison.yml) uses byte-identical STEP geometry, matching fixtures/loads, and 14/10/7 mm grids for all six frame/load combinations (36 native solves). The workflow archives native solver records and an independent side-by-side comparison report. Use the **latest successful workflow run** for actual observations, rather than assuming a quadratic element must converge.
 
 The interpolation order is independent of mesh density. A passing solve or apparently stable displacement is **not** engineering validation, and high peak stress at idealized fixed edges may remain mesh sensitive. C3D10 boundary traction integration currently assumes planar triangular surfaces; its curved-CAD loading should be upgraded to isoparametric quadrature before extending this pathway to curved parts.
 
@@ -64,6 +64,26 @@ The interpolation order is independent of mesh density. A passing solve or appar
 | Braced rectangle, lateral load | 3.965% | **0.303%** |
 
 At the 7 mm requested mesh size, rectangular-frame maximum displacement was **0.0194903 mm** using C3D4 versus **0.0254805 mm** using C3D10. Both C3D10 cases met the limited **5% displacement-change criterion at both refinement steps**; neither met the separate peak-stress sensitivity screening criterion. Quadratic interpolation improved the observed displacement mesh stability in these examples, **not independently proven physical accuracy**. The existing native-only benchmark result bridge continues to publish the original fixed-case records without altering the browser visual design.
+
+
+### Full six-frame C3D10 refinement and stress diagnosis — October 20, 2026
+
+[**Completed 36-solve comparison**](https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/39501652909): the same six STEP specimens, with byte-identical geometry for C3D4/C3D10 and requested mesh sizes 14, 10 and 7 mm.
+
+| Frame/load | C3D4 last displacement change | C3D10 last displacement change | C3D10 last global peak-stress change |
+|---|---:|---:|---:|
+| Portal, downward | 28.09% | **0.64%** | 12.97% |
+| Rectangle, sideways | 23.37% | **1.13%** | 13.91% |
+| Braced rectangle, sideways | 3.97% | **0.30%** | 12.19% |
+| Portal, sideways | 21.21% | **0.57%** | 13.68% |
+| Rectangle, downward | 29.06% | **0.79%** | 15.72% |
+| Braced rectangle, downward | 25.61% | **0.70%** | 8.28% |
+
+Quadratic elements showed smaller displacement changes in every test. Peak stress remained mesh-sensitive, so this does not establish independent physical accuracy.
+
+The native stress-diagnostics module groups *actual CalculiX integration-point stresses* by approximate host tetrahedron centroid distance from fixed and loaded faces, with unchanged **20 and 40 mm** physical exclusion bands. In five of six cases, the largest-stress element center was approximately **158–161 mm above the fixed base**, near the upper load/joint region. The lateral rectangular case peaked approximately **22 mm** above the base. Excluding 40 mm around the loaded top reduced the final peak-stress change to **3.84%, 7.79%, 5.76%, 4.58%, and 3.28%** in the five upper-localized cases; lateral rectangular remained **13.91%**, consistent with a lower hotspot.
+
+Distances reflect tetrahedron **corner centroids**, not actual Gauss point positions. These are screening trends, not proof of a stress singularity or convergence. Follow-up validation requires load/joint modeling investigations, fixed-position stress comparisons, improved curved-surface quadrature and independent analytical or physical benchmarks. EZ-FEA remains **experimental and not for engineering sign-off**.
 
 ## Six-frame automatic mesh-convergence experiment
 
