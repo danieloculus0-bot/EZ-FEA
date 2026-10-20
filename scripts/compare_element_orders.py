@@ -51,6 +51,9 @@ def compare_element_studies(linear, quadratic):
             "C3D10_nodes":new["nodes"],
             "C3D4_stress_band_trends":old.get("stress_band_trends"),
             "C3D10_stress_band_trends":new.get("stress_band_trends"),
+            "C3D4_load_stress_band_trends":old.get("load_stress_band_trends"),
+            "C3D10_load_stress_band_trends":new.get("load_stress_band_trends"),
+            "C3D10_peak_host_distance_from_load_mm":new.get("peak_host_tet_centroid_distance_from_load_mm"),
             "C3D4_peak_host_distance_mm":old.get("peak_host_tet_centroid_distance_mm"),
             "C3D10_peak_host_distance_mm":new.get("peak_host_tet_centroid_distance_mm"),
             "fine_displacement_step_improved":(
@@ -108,6 +111,36 @@ def to_markdown(result):
                 f"{row['C3D10_fine_peak_stress_change_pct']:.3f}% | "
                 f"{cell(20.)} | {cell(40.)} |"
             )
+        if any(row.get("C3D10_load_stress_band_trends") for row in result["cases"]):
+            lines.extend([
+                "",
+                "### Loaded-face exclusion (additional diagnostic)",
+                "",
+                "Same native integration-point stress data, excluding fixed physical",
+                "distance bands around the applied top-load plane.",
+                "",
+                "| Case | Fine-grid peak host distance to load | Global peak Δ | ≥20 mm away from load Δ | ≥40 mm away from load Δ |",
+                "|---|---:|---:|---:|---:|",
+            ])
+            for row in result["cases"]:
+                bands=row.get("C3D10_load_stress_band_trends") or []
+                by_dist={b["min_distance_mm"]:b for b in bands}
+                def val(distance):
+                    item=by_dist.get(distance,{})
+                    return (f"{item['last_change_pct']:.3f}%"
+                            if "last_change_pct" in item else "n/a")
+                peak=row.get("C3D10_peak_host_distance_from_load_mm") or []
+                distance=f"{peak[-1]:.3f} mm" if peak else "n/a"
+                lines.append(
+                    f"| {row['key']} | {distance} | "
+                    f"{row['C3D10_fine_peak_stress_change_pct']:.3f}% | "
+                    f"{val(20.)} | {val(40.)} |")
+            lines.extend([
+                "",
+                "If peak-stress sensitivity drops away from loading, investigate",
+                "the load application faces and perfectly rigid fused joints.",
+                "This is NOT proof of a singularity or engineering correctness.",
+            ])
         lines.extend([
             "",
             "Peaks outside the fixture bands are diagnostic only. A smaller change",
