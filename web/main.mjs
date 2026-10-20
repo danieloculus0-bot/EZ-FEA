@@ -226,6 +226,12 @@ function start(){
     if(mode==="demo")clearResults();
   });
   const drop=byId("dropZone");
+  drop.addEventListener("keydown",(event)=>{
+    if(event.key==="Enter"||event.key===" "){
+      event.preventDefault();
+      byId("fileInput").click();
+    }
+  });
   for(const event of ["dragenter","dragover"]){
     drop.addEventListener(event,e=>{e.preventDefault();drop.classList.add("dragover");});
   }
