@@ -354,3 +354,29 @@ summary { color:#e6f6e7; }
   .bean-mascot {width:69px;min-width:69px;border-radius:18px;}
   .bean-heading strong span {display:block;margin:2px 0 0;}
 }
+
+
+/* A very small continuous mascot bob plus a brief response nod. */
+.bean-mascot img {
+  transform-origin:50% 76%;
+  animation:bean-idle 4.6s ease-in-out infinite;
+  will-change:transform;
+}
+.bean-mascot.bean-respond img {animation:bean-nod .8s ease-in-out 1;}
+@keyframes bean-idle {
+  0%,100% {transform:translateY(0) rotate(-1deg);}
+  50% {transform:translateY(-5px) rotate(2deg);}
+}
+@keyframes bean-nod {
+  0% {transform:translateY(0) rotate(0);}
+  35% {transform:translateY(2px) rotate(7deg);}
+  65% {transform:translateY(-4px) rotate(-4deg);}
+  100% {transform:translateY(0) rotate(-1deg);}
+}
+@media (prefers-reduced-motion:reduce) {
+  .bean-mascot img,.bean-mascot.bean-respond img {
+    animation:none!important;
+    transform:none!important;
+    will-change:auto;
+  }
+}
