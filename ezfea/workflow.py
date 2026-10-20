@@ -7,6 +7,7 @@ from .core import Analysis
 from .mesh import build_mesh
 from .solver import nodal_force_components, run_calculix, write_input
 from .results import summarize_dat
+from .stress_diagnostics import stress_distance_bands
 from .bean import send_to_bean_inbox
 
 def run_case(case: Analysis, output_root="runs"):
@@ -45,6 +46,10 @@ def run_case(case: Analysis, output_root="runs"):
             applied_nodal_forces_n=nodal_force_components(case, mesh),
             element_type=mesh.element_type,
         )
+        # Optional diagnostic for a single planar fixed face: stress away
+        # from the constrained plane in fixed *physical* distance bands.
+        # This never replaces peak stress, equilibrium, or convergence checks.
+        metrics["stress_distance_bands"] = stress_distance_bands(out/"analysis.dat",mesh)
         meta["results"] = metrics
         meta["max_displacement_mm"] = metrics["max_displacement_mm"]
         # A static solver can finish but still produce physically suspect results.
