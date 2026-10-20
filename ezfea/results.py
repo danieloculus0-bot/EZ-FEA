@@ -99,7 +99,8 @@ def max_displacement_mm(dat_file: Path):
 
 def summarize_dat(dat_file: Path, applied_force_n, yield_mpa, *, expected_nodes=None,
                   expected_elements=None, applied_force_scale_n=None,
-                  applied_nodal_forces_n=None, element_type="C3D4"):
+                  applied_nodal_forces_n=None, element_type="C3D4",
+                  node_positions_mm=None):
     """Provenance-aware, deliberately limited static analysis summary.
 
     A computed ratio against a nominal yield is not a validated safety claim.
@@ -139,7 +140,52 @@ def summarize_dat(dat_file: Path, applied_force_n, yield_mpa, *, expected_nodes=
     if not math.isfinite(reference_magnitude) or reference_magnitude <= 0:
         raise ValueError("Applied force reference magnitude must be positive.")
     residual_norm = math.sqrt(sum(x*x for x in residual)) / reference_magnitude
+    moment_metrics={}
+    if node_positions_mm is not None:
+        if applied_nodal_forces_n is None:
+            raise ValueError("Moment equilibrium check needs all applied nodal forces.")
+        def cross(p,f):
+            return (p[1]*f[2]-p[2]*f[1],
+                    p[2]*f[0]-p[0]*f[2],
+                    p[0]*f[1]-p[1]*f[0])
+        def add_moment(moment,point,force):
+            torque=cross(point,force)
+            for i in range(3):
+                moment[i]+=torque[i]
+        applied_moment=[0.,0.,0.]
+        for (node,axis),force in applied_nodal_forces_n.items():
+            if node not in node_positions_mm or axis not in (1,2,3):
+                raise ValueError("Missing coordinates of a loaded node.")
+            vector=[0.,0.,0.]
+            vector[axis-1]=force
+            add_moment(applied_moment,node_positions_mm[node],vector)
+        support_moment=[0.,0.,0.]
+        for row in reactions:
+            node=int(row[0])
+            if node not in node_positions_mm:
+                raise ValueError("Missing coordinates of a support reaction node.")
+            reaction_force=[row[axis]-applied_nodal_forces_n.get((node,axis),0.)
+                            for axis in (1,2,3)]
+            add_moment(support_moment,node_positions_mm[node],reaction_force)
+        balance=[applied_moment[i]+support_moment[i] for i in range(3)]
+        # A characteristic model extent makes this balance comparable to
+        # the force residual without hiding a zero-moment load case.
+        extremes=[(min(p[i] for p in node_positions_mm.values()),
+                   max(p[i] for p in node_positions_mm.values()))
+                  for i in range(3)]
+        extent=math.sqrt(sum((mx-mn)**2 for mn,mx in extremes))
+        moment_ref=reference_magnitude*max(extent,1.)
+        imbalance=math.sqrt(sum(v*v for v in balance))/moment_ref
+        moment_metrics={
+            "applied_moment_about_origin_nmm":applied_moment,
+            "reaction_moment_about_origin_nmm":support_moment,
+            "moment_balance_residual_nmm":balance,
+            "moment_balance_relative_error":imbalance,
+            "moment_balance_check":"pass" if imbalance<=.01 else "review",
+            "moment_balance_reference_nmm":moment_ref,
+        }
     return {
+        **moment_metrics,
         "source": dat_file.name,
         "stress_type": "integration_point_cauchy",
         "element_type":element_type,
