@@ -4,6 +4,9 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import math
+from .core import FaceFootprintLoad
+from .load_footprints import gaussian_face_force_weights, resultant_force_moment
 
 def _rows(numbers, count=12):
     for i in range(0, len(numbers), count):
@@ -44,35 +47,81 @@ def _rigid_body_rank(nodes, supports):
     return len(basis)
 
 
-def nodal_force_components(case, mesh):
-    """All distributed forces exactly as written to CalculiX, keyed by (node, axis).
+def _cross(a,b):
+    return (a[1]*b[2]-a[2]*b[1],
+            a[2]*b[0]-a[0]*b[2],
+            a[0]*b[1]-a[1]*b[0])
 
-    Useful to correct raw *NODE PRINT RF forces when direct CLOAD also acts on
-    the same nodes. CalculiX prints internal nodal force contributions, not an
-    already load-corrected reaction, in that overlapping-node situation.
+
+def assemble_surface_loads(case,mesh):
+    """Build the actual CLOAD nodal load vector and truthful applied wrench.
+
+    Gaussian footprints are integrated on the real CAD surface T3/T6 triangles
+    and normalized to the requested N total force. The *nodal* wrench must
+    reproduce the independently integrated surface-traction centroid moment,
+    including eccentricity. Nodal T6 shares may be signed, as expected for
+    consistent higher-order load vectors. No nonlinear contact is implied.
     """
-    extended = bool(case.connections)
-    combined = {}
-    if extended:
-        for load in case.loads:
-            weights = mesh.load_weights_by_face.get(load.face)
-            if not weights or not set(weights).issubset(mesh.nodes):
-                raise ValueError(f"Load face {load.face} has no valid surface mesh.")
-            if abs(sum(weights.values()) - 1) > 1e-8:
-                raise ValueError(f"Load face {load.face} weights must sum to one.")
-            for node, share in weights.items():
-                for axis, component in enumerate(load.force_n, 1):
-                    combined[node, axis] = combined.get((node, axis), 0.) + component*share
-    else:
-        if not set(mesh.force_weights).issubset(mesh.nodes):
-            raise ValueError("Load selection references nodes not in mesh.")
-        if abs(sum(mesh.force_weights.values()) - 1) > 1e-8:
-            raise ValueError("Force weights must sum to one.")
-        for node, share in mesh.force_weights.items():
-            for axis, component in enumerate(case.force_n, 1):
-                combined[node, axis] = component*share
-    return combined
+    extended=bool(case.connections)
+    combined={}
+    evidence=[]
+    loads=case.loads if extended else case.active_loads
+    for load in loads:
+        if isinstance(load,FaceFootprintLoad):
+            tris=mesh.surface_triangles_by_face.get(load.face)
+            if not tris:
+                raise ValueError(f"Footprint CAD face {load.face} lacks actual surface triangles")
+            model=gaussian_face_force_weights(tris,mesh.nodes,load.center_mm,load.spread_mm)
+            weights=model["weights"]
+            center=model["resultant_center_mm"]
+            kind="gaussian_face_traction"
+        else:
+            weights=(mesh.load_weights_by_face.get(load.face) if extended
+                     else mesh.force_weights)
+            if not weights:
+                raise ValueError(f"CAD load face {load.face} has no equivalent nodal loads")
+            center=[sum(share*mesh.nodes[node][i] for node,share in weights.items())
+                    for i in range(3)]
+            model={}
+            kind="uniform_face_force"
+        if not set(weights).issubset(mesh.nodes):
+            raise ValueError(f"Face {load.face} equivalent load references unknown nodes")
+        if abs(sum(weights.values())-1.)>1e-8:
+            raise ValueError(f"Face {load.face} load force shares do not sum to one")
+        nodal={}
+        for node,share in weights.items():
+            for axis,value in enumerate(load.force_n,1):
+                increment=value*share
+                combined[node,axis]=combined.get((node,axis),0.)+increment
+                nodal[node,axis]=nodal.get((node,axis),0.)+increment
+        wrench=resultant_force_moment(nodal,mesh.nodes)
+        expected_moment=_cross(center,load.force_n)
+        fscale=max(1.,math.dist(load.force_n,(0.,0.,0.)))
+        length=max(1.,math.dist(center,(0.,0.,0.)))
+        if (math.dist(wrench["force_n"],load.force_n)>1e-8*fscale or
+            math.dist(wrench["moment_about_origin_nmm"],expected_moment)>1e-7*fscale*length):
+            raise ValueError(f"Face {load.face}: surface load force/moment inconsistency")
+        details={
+            "mode":kind,"face":load.face,
+            "requested_total_force_n":list(load.force_n),
+            "resultant_force_n":wrench["force_n"],
+            "resultant_center_mm":list(center),
+            "resultant_moment_about_origin_nmm":wrench["moment_about_origin_nmm"],
+            "force_balance_passed":True,"moment_balance_passed":True,
+            "number_of_loaded_nodes":len(weights),
+            **{k:v for k,v in model.items() if k!="weights"}
+        }
+        if isinstance(load,FaceFootprintLoad):
+            details["spread_mm"]=load.spread_mm
+            details["nominal_peak_traction_n_per_mm2"]=fscale/model["weighted_footprint_area_mm2"]
+            details["caveat"]="Prescribed total Gaussian traction on a CAD face, not a computed pad contact law."
+        evidence.append(details)
+    return combined,evidence
 
+
+def nodal_force_components(case,mesh):
+    """Actual force components written to the CalculiX CLOAD section."""
+    return assemble_surface_loads(case,mesh)[0]
 
 def write_input(case, mesh, target):
     case.validate()
