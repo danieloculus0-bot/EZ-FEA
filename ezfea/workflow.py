@@ -6,7 +6,7 @@ from pathlib import Path
 from .core import Analysis
 from .mesh import build_mesh
 from .solver import run_calculix, write_input
-from .results import max_displacement_mm
+from .results import summarize_dat
 from .bean import send_to_bean_inbox
 
 def run_case(case: Analysis, output_root="runs"):
@@ -27,10 +27,19 @@ def run_case(case: Analysis, output_root="runs"):
                         "loaded_area_mm2":mesh.loaded_area_mm2,"element_type":"C3D4"}
         inp = write_input(case,mesh,out/"analysis.inp")
         meta.update(run_calculix(inp))
-        maximum = max_displacement_mm(out/"analysis.dat")
-        if maximum is not None:
-            meta["max_displacement_mm"] = maximum
-        meta["status"] = "completed"
+        metrics = summarize_dat(
+            out/"analysis.dat", case.force_n, case.material.yield_mpa,
+            expected_nodes=len(mesh.nodes),
+            expected_elements=len(mesh.elements),
+        )
+        meta["results"] = metrics
+        meta["max_displacement_mm"] = metrics["max_displacement_mm"]
+        # A static solver can finish but still produce physically suspect results.
+        # Do not advertise an unchecked load balance as validated.
+        meta["status"] = (
+            "completed" if metrics["force_balance_check"] == "pass"
+            else "needs_review"
+        )
     except Exception as exc:
         meta["status"], meta["error"] = "failed", str(exc)
         raise
