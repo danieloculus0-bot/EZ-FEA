@@ -3,6 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+  pull_request:
     paths:
       - "ezfea/**"
       - "tests/test_integration.py"

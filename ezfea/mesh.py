@@ -1,7 +1,7 @@
 """Gmsh import and C3D4 tetrahedral meshing. Geometry units are mm."""
 from __future__ import annotations
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from .core import Face
 
 @dataclass
@@ -11,6 +11,9 @@ class Mesh:
     fixed_nodes: list[int]
     force_weights: dict[int, float]
     loaded_area_mm2: float
+    constraint_nodes: dict[int, list[int]] = field(default_factory=dict)
+    load_weights_by_face: dict[int, dict[int, float]] = field(default_factory=dict)
+    load_areas_by_face: dict[int, float] = field(default_factory=dict)
 
 def _gmsh():
     try:
@@ -65,7 +68,7 @@ def distributed_force_weights(triangles, nodes):
         raise ValueError("Load face has zero triangulated area.")
     return {n:w/total for n,w in weights.items()}, total
 
-def build_mesh(step_file, fixed_face, loaded_face, mesh_size_mm):
+def build_mesh(step_file, fixed_face, loaded_face, mesh_size_mm, *, constraint_faces=None, load_faces=None):
     gmsh = _gmsh()
     gmsh.initialize()
     try:
@@ -74,9 +77,18 @@ def build_mesh(step_file, fixed_face, loaded_face, mesh_size_mm):
         gmsh.option.setNumber("Mesh.MeshSizeMin", float(mesh_size_mm)/4)
         gmsh.option.setNumber("Mesh.ElementOrder", 1)
         _open_step(gmsh, step_file)
+        # Disconnected solids have no contact or tie physics in this solver.
+        if len(gmsh.model.getEntities(3)) != 1:
+            raise ValueError("Multi-solid STEP assemblies are not supported yet; no contact/ties are defined.")
         all_faces = {f.tag for f in _faces(gmsh)}
-        if fixed_face not in all_faces or loaded_face not in all_faces:
-            raise ValueError("CAD face numbering changed. Reinspect the part.")
+        support_faces = tuple(dict.fromkeys(
+            constraint_faces if constraint_faces is not None else (fixed_face,)))
+        force_faces = tuple(dict.fromkeys(
+            load_faces if load_faces is not None else (loaded_face,)))
+        if not support_faces or not force_faces or (
+            set(support_faces) | set(force_faces)
+        ) - all_faces:
+            raise ValueError("CAD face numbering changed or a selection is empty. Reinspect the part.")
         gmsh.model.mesh.generate(3)
         ids, coords, _ = gmsh.model.mesh.getNodes()
         nodes = {int(n): tuple(float(v) for v in coords[i*3:i*3+3]) for i,n in enumerate(ids)}
@@ -89,19 +101,27 @@ def build_mesh(step_file, fixed_face, loaded_face, mesh_size_mm):
                 elems[int(label)] = tuple(int(n) for n in connectivity[i*4:i*4+4])
         if not elems:
             raise ValueError("No solid elements generated.")
-        fixed_ids, _, _ = gmsh.model.mesh.getNodes(2, fixed_face, True)
-        fixed_nodes = sorted(set(int(n) for n in fixed_ids))
-        if not fixed_nodes:
-            raise ValueError("Connection face has no nodes.")
-        ttypes, _, tnodes = gmsh.model.mesh.getElements(2, loaded_face)
-        tris = []
-        for etype, connectivity in zip(ttypes, tnodes):
-            if int(etype) != 2:
-                raise ValueError("Expected T3 triangles on the load face.")
-            tris.extend(tuple(int(n) for n in connectivity[i:i+3]) for i in range(0,len(connectivity),3))
-        weights, area = distributed_force_weights(tris, nodes)
-        if set(weights) & set(fixed_nodes):
+        support_nodes = {}
+        for face in support_faces:
+            ids, _, _ = gmsh.model.mesh.getNodes(2, face, True)
+            support_nodes[face] = sorted(set(int(n) for n in ids))
+            if not support_nodes[face]:
+                raise ValueError(f"Connection face {face} has no nodes.")
+        fixed_nodes = sorted({n for group in support_nodes.values() for n in group})
+        surface_weights, surface_areas = {}, {}
+        for face in force_faces:
+            ttypes, _, tnodes = gmsh.model.mesh.getElements(2, face)
+            tris = []
+            for etype, connectivity in zip(ttypes, tnodes):
+                if int(etype) != 2:
+                    raise ValueError("Expected T3 triangles on each load face.")
+                tris.extend(tuple(int(n) for n in connectivity[i:i+3])
+                            for i in range(0, len(connectivity), 3))
+            surface_weights[face], surface_areas[face] = distributed_force_weights(tris, nodes)
+        weights = surface_weights[force_faces[0]]
+        if constraint_faces is None and set(weights) & set(fixed_nodes):
             raise ValueError("Connection and force regions overlap at mesh nodes.")
-        return Mesh(nodes, elems, fixed_nodes, weights, area)
+        return Mesh(nodes, elems, fixed_nodes, weights,
+                    sum(surface_areas.values()), support_nodes, surface_weights, surface_areas)
     finally:
         gmsh.finalize()

@@ -21,15 +21,16 @@ Click Demo beam for a 100 x 10 x 10 mm cantilever with automatically selected en
 ## Scope
 
 - Real Gmsh STEP import and 3D linear C3D4 tetrahedral mesh.
-- Face-based connections (all three displacement degrees fixed).
-- Force distributed over a selected surface by triangle area.
+- Face-based connections including independent global X/Y/Z translation restraints and multiple connection faces (Python engine API).
+- Multiple independent total-force vectors distributed over CAD faces by triangle area, with exact summed XYZ load tracking.
+- Six rigid-body-mode restraint rank check before multi-face solves. It detects obvious unconstrained motion, but cannot validate the mechanical authenticity of a fixture.
 - Single-material, linear elastic, static CalculiX solves.
 - N/mm/MPa units. Model STEP dimensions must already be millimeters.
 - Recorded original STEP model and SHA256, inputs, mesh statistics, solver logs and native result files.
 - BEAN handoff as JSON. Optional verified BEAN Core log-note inbox interface if EZFEA_BEAN_INBOX is set to the same location as BEAN_INBOX_DIR. BEAN logs a factual run record, not an engineering review.
 - Automated tests and optional full solver smoke test.
 
-**Important limits:** first-order C3D4 is inaccurate for some bending scenarios; no automatic mesh convergence, no contact/bolts/pins/weld physics, no nonlinear material law, no print orientation effects, no built-in result contour viewer, no automatic factor of safety. Yield strength is stored for later use. No fabricated results on failures. Gmsh and CalculiX were not installed in the development environment, so the end-to-end solve remains to be tested on a solver-equipped PC.
+**Important limits:** only one continuous solid is supported, not a multi-component door assembly. A face restraint is not a real bolt, hinge, bearing, pin, or actuator connection. First-order C3D4 is inaccurate for some bending scenarios; no automatic mesh convergence, contact/ties, nonlinear material law, print orientation effects, built-in result contour viewer, or validated factor of safety. Yield strength is stored for indicative comparison. No fabricated results on failures. A real Gmsh + CalculiX solver smoke test is exercised in GitHub Actions.
 
 Run automated tests:
 
@@ -48,3 +49,35 @@ See docs/VALIDATION.md. Target ASME V&V 10-2019 (R2025), relevant NAFEMS benchma
 EZ-FEA is GPL-3.0-or-later. Gmsh uses GPL-2.0-or-later with special exceptions, and its license conditions must be respected when distributing. CalculiX is free and open source and is called as an external executable. There is no paid solver requirement.
 
 BEAN_FEA_Genius can later provide advisory analysis and comparisons; it must never be represented as the source of physics calculations.
+
+
+## Multi-face fixture/load engine (Python API)
+
+The legacy single fixed-face and single load-face GUI remains supported. For
+advanced cases the solver can now assign independent translation constraints and
+distributed force loads to multiple CAD faces. Face IDs must be obtained from
+`inspect_step` for the exact current STEP model.
+
+~~~python
+from ezfea.core import Analysis, FaceConstraint, FaceLoad
+from ezfea.workflow import run_case
+
+case = Analysis(
+    step_file="part.step", fixed_face=0, loaded_face=0,
+    force_n=(0, 0, 0), mesh_size_mm=5,
+    connections=(
+        FaceConstraint(face=1, axes=(1, 2, 3)),
+        FaceConstraint(face=3, axes=(3,)),
+    ),
+    loads=(
+        FaceLoad(face=2, force_n=(0, -100, 0)),
+        FaceLoad(face=4, force_n=(0, 0, -40)),
+    ),
+)
+run_case(case)
+~~~
+
+Constrain only degrees of freedom your actual mounting removes. Axis constraints
+are applied to all nodes on the selected face; they are **not** hinge joints or
+actuator elements. Separate physical components and connector physics will need
+their own assembly/contact/connector phase. No default safety claims.

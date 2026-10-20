@@ -58,6 +58,19 @@ class CalculixResultTests(unittest.TestCase):
         self.assertEqual(result["force_balance_check"],"pass")
         self.assertAlmostEqual(result["max_displacement_mm"],0.5)
 
+    def test_direct_force_on_connection_node_is_not_double_counted(self):
+        # RF is raw internal nodal force. One connected node also gets -10 N
+        # directly, so the reported -110 N must be corrected to -100 N.
+        dat = self.setup_file(FIXTURE.replace("-1.000000E+02", "-1.100000E+02"))
+        result = summarize_dat(
+            dat, (100, 0, 0), 250,
+            applied_nodal_forces_n={(1, 1): -10.},
+        )
+        self.assertEqual(result["reaction_force_n"], [-100., 0., 0.])
+        self.assertEqual(result["raw_solver_connection_forces_n"], [-110., 0., 0.])
+        self.assertEqual(result["direct_applied_forces_on_connection_nodes_n"], [-10., 0., 0.])
+        self.assertEqual(result["force_balance_check"], "pass")
+
     def test_out_of_balance_marked_for_review(self):
         dat=self.setup_file(FIXTURE.replace("-1.000000E+02","-7.000000E+01"))
         result=summarize_dat(dat,(100,0,0),250)

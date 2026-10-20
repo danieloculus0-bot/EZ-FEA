@@ -91,7 +91,8 @@ def max_displacement_mm(dat_file: Path):
 
 
 def summarize_dat(dat_file: Path, applied_force_n, yield_mpa, *, expected_nodes=None,
-                  expected_elements=None):
+                  expected_elements=None, applied_force_scale_n=None,
+                  applied_nodal_forces_n=None):
     """Provenance-aware, deliberately limited static analysis summary.
 
     A computed ratio against a nominal yield is not a validated safety claim.
@@ -113,12 +114,22 @@ def summarize_dat(dat_file: Path, applied_force_n, yield_mpa, *, expected_nodes=
     peak_s = max(stress, key=lambda row:von_mises_mpa(*row[2:]))
     u_mm = math.sqrt(sum(x*x for x in peak_u[1:]))
     vm_mpa = von_mises_mpa(*peak_s[2:])
-    reaction = [sum(row[index] for row in reactions) for index in (1,2,3)]
+    # CalculiX printed RF also includes direct applied nodal loads at reported
+    # connection nodes. Deduct those inputs to recover support reaction forces.
+    raw_reaction = [sum(row[index] for row in reactions) for index in (1,2,3)]
+    direct_on_connections = [
+        sum(applied_nodal_forces_n.get((int(row[0]), axis), 0.)
+            for row in reactions)
+        if applied_nodal_forces_n is not None else 0.
+        for axis in (1, 2, 3)
+    ]
+    reaction = [raw_reaction[i] - direct_on_connections[i] for i in range(3)]
     residual = [reaction[i] + applied_force_n[i] for i in range(3)]
     applied_magnitude = math.sqrt(sum(float(x)**2 for x in applied_force_n))
-    if applied_magnitude <= 0:
-        raise ValueError("Applied load magnitude must be positive.")
-    residual_norm = math.sqrt(sum(x*x for x in residual)) / applied_magnitude
+    reference_magnitude = applied_force_scale_n if applied_force_scale_n is not None else applied_magnitude
+    if not math.isfinite(reference_magnitude) or reference_magnitude <= 0:
+        raise ValueError("Applied force reference magnitude must be positive.")
+    residual_norm = math.sqrt(sum(x*x for x in residual)) / reference_magnitude
     return {
         "source": dat_file.name,
         "stress_type": "integration_point_cauchy",
@@ -132,7 +143,10 @@ def summarize_dat(dat_file: Path, applied_force_n, yield_mpa, *, expected_nodes=
         "nominal_yield_to_von_mises_ratio": (
             yield_mpa / vm_mpa if vm_mpa > 0 else None),
         "reaction_force_n": reaction,
+        "raw_solver_connection_forces_n": raw_reaction,
+        "direct_applied_forces_on_connection_nodes_n": direct_on_connections,
         "applied_force_n": list(applied_force_n),
+        "applied_force_reference_magnitude_n": reference_magnitude,
         "force_balance_residual_n": residual,
         "force_balance_relative_error": residual_norm,
         "force_balance_check": "pass" if residual_norm <= 0.01 else "review",
