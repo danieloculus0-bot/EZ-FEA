@@ -12,7 +12,8 @@ Static site intended for GitHub Pages. No application server or account needed.
 - Rotate and zoom the 3D representation. On imported parts, click Mark connection or Mark force, click a location, and export a JSON setup with reference points.
 - View BEAN's official smiling green mascot, animated with a gentle idle float and contextual response nod (disabled when reduced motion is requested).
 - Use BEAN browser-side engineering checks: assess actual beam FE result quantities, stress usage vs nominal yield, deflection ratio, agreement with the analytical beam reference, and short-beam/shear-model limitations; or review which CAD locations remain merely unverified visual marks.
-- Expand **See 3D physics results from the real engine** to view three provenance-linked, previously calculated Gmsh/CalculiX solid-frame studies. The data come from GitHub Actions run [39488256233](https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/39488256233) and are displayed unchanged from the recorded case metrics, not recomputed in the browser.
+- Select one of six verified, precomputed frame cases in **Choose your part**: open portal, rectangular frame and braced rectangular frame under downward or sideways loading. The viewer shows a geometrically faithful **reference schematic**, not a calculated deformation or color stress field. The results panel displays the actual archived 3D CalculiX values and links to their originating workflow.
+- Expand **See 3D physics results from the real engine** to compare the published values. A successful new native solver run automatically refreshes the GitHub Pages dataset; there is no manually copied results table.
 
 **What is NOT available on Pages:** Running Python, Gmsh, native CalculiX, executing new full 3D FEA on uploaded parts, validated safety ratings of uploaded parts, mechanically determining physical bolted/welded/pinned connections, or live autonomous BEAN Core review. All of these require further engineering and (for the Python solver) a computation server, or a separate future browser-compatible solver.
 
@@ -26,7 +27,7 @@ A STEP preview triangle or point does not automatically map to a mechanically co
 - Browser FE calculation is independent of Python and only applies to its built-in prismatic cantilever beam.
 - The BEAN browser advisor is a transparent deterministic engineering-check module, not the BEAN Core runtime or an LLM; it never claims to run native physics or certify a model.
 - The official mascot image is referenced from the project's BEAN repository, with a locally stored official BEAN SVG as fallback. Animations respect the `prefers-reduced-motion` setting.
-- Recorded solver evidence lives in `web/data/frame_studies.json` with source workflow, SHA, mesh nominal size and assumptions. It is a fixed reference dataset, not a live GitHub workflow API or an analysis of user-uploaded geometry.
+- `web/data/frame_studies.json` is a checked-in **three-study offline fallback**. During Pages deployment, the workflow downloads and replaces that file with the latest successful, six-case solver artifact from GitHub Actions. Each published record includes its run URL, commit, UTC generation time, model definition, mesh statistics and real stress/displacement/equilibrium values. A failed native run does not replace the last good publication.
 
 External JS/Wasm code is delivered from cdn.jsdelivr.net. CAD files are loaded from local browser memory and not sent to an EZ-FEA server. Avoid using confidential CAD unless you approve of the page and its third-party script dependencies.
 
@@ -46,6 +47,16 @@ node --check web/main.mjs
 node --check web/viewer.mjs
 node --check web/bean_advisor.mjs
 ~~~
+
+## Automatic solver → website data bridge
+
+`.github/workflows/frame-physics.yml` runs **six** real Gmsh + CalculiX linear-static frame studies whenever the benchmark/engine code changes, or when manually launched from GitHub Actions. It creates the `EZ-FEA-web-physics-data` artifact using `scripts/publish_frame_evidence.py`. Publication fails if expected case identities, model SHA-256s, completion status, nonzero displacement/stress or equilibrium checks are missing.
+
+`.github/workflows/pages.yml` starts on ordinary browser file pushes **and** when the native solver workflow succeeds. It downloads the most recent verified frame dataset into the published Pages bundle (via an isolated temporary directory), checks the JSON, and deploys the static site. The page fetches that JSON when opened; it does not need a public GitHub token, authenticated browser request, API server or manual JSON copy.
+
+**Important:** this is automatic *result publishing*, **not** triggering a fresh solve from anonymous HTML. The sample case geometry, load and material are fixed to the archived run. To add another simulation, define a new `FrameSpec` in `ezfea/frame_benchmarks.py`, give it a stable name in `scripts/publish_frame_evidence.py`, add appropriate test checks, and push the authorized code change. The CI workflow solves and publishes it, and the selector reads it without further HTML changes. Do not display invalid or partially solved studies.
+
+GitHub Actions artifacts expire; the checked-in dataset remains a read-only fallback. Solver evidence and case.json files can be downloaded from the originating frame workflow run. Pages cannot solve arbitrary uploaded STEP files; that will require a properly authenticated backend/compute queue later.
 
 ## Deploy on GitHub Pages
 
