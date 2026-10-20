@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - "ezfea/analytic_benchmarks.py"
+      - "ezfea/bending_benchmarks.py"
       - "ezfea/stress_interpolation.py"
       - "ezfea/stress_probes.py"
       - "ezfea/results.py"
@@ -14,6 +15,7 @@ on:
       - "ezfea/convergence.py"
       - "tests/test_stress_interpolation.py"
       - "tests/test_analytic_benchmarks.py"
+      - "tests/test_bending_benchmarks.py"
       - ".github/workflows/analytic-stress-benchmark.yml"
 
 permissions:
@@ -37,15 +39,22 @@ jobs:
         run: |
           python -m unittest discover -s tests -p test_stress_interpolation.py -v
           python -m unittest discover -s tests -p test_analytic_benchmarks.py -v
+          python -m unittest discover -s tests -p test_bending_benchmarks.py -v
       - name: Solve real axial bar with two element types and three grids
         run: |
           python -m ezfea.analytic_benchmarks --out axial_analytic_evidence --meshes 14 10 7
           cat axial_analytic_evidence/ANALYTICAL_REPORT.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Compare six real 3D bending solves with beam-theory reference
+        run: |
+          python -m ezfea.bending_benchmarks --out bending_analytic_evidence --meshes 14 10 7
+          cat bending_analytic_evidence/BENDING_REPORT.md >> "$GITHUB_STEP_SUMMARY"
       - name: Archive raw CAD, CalculiX output and independent formulas
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: EZ-FEA-native-axial-reference-evidence
-          path: axial_analytic_evidence/
+          path: |
+            axial_analytic_evidence/
+            bending_analytic_evidence/
           retention-days: 30
           if-no-files-found: warn
