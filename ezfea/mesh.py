@@ -15,6 +15,7 @@ class Mesh:
     load_weights_by_face: dict[int, dict[int, float]] = field(default_factory=dict)
     load_areas_by_face: dict[int, float] = field(default_factory=dict)
     element_type: str = "C3D4"
+    surface_triangles_by_face: dict[int, list[tuple[int,...]]] = field(default_factory=dict)
 
 def _gmsh():
     try:
@@ -154,6 +155,7 @@ def build_mesh(step_file, fixed_face, loaded_face, mesh_size_mm, *, constraint_f
                 raise ValueError(f"Connection face {face} has no nodes.")
         fixed_nodes = sorted({n for group in support_nodes.values() for n in group})
         surface_weights, surface_areas = {}, {}
+        surface_triangles = {}
         for face in force_faces:
             ttypes, _, tnodes = gmsh.model.mesh.getElements(2, face)
             tris = []
@@ -165,6 +167,7 @@ def build_mesh(step_file, fixed_face, loaded_face, mesh_size_mm, *, constraint_f
                             for i in range(0,len(connectivity),stride))
             if not tris:
                 raise ValueError(f"Loaded face {face} has no surface triangles.")
+            surface_triangles[face]=tris
             surface_weights[face], surface_areas[face] = (
                 distributed_force_weights(tris,nodes) if element_type=="C3D4"
                 else distributed_quadratic_force_weights(tris,nodes))
@@ -173,6 +176,6 @@ def build_mesh(step_file, fixed_face, loaded_face, mesh_size_mm, *, constraint_f
             raise ValueError("Connection and force regions overlap at mesh nodes.")
         return Mesh(nodes, elems, fixed_nodes, weights,
                     sum(surface_areas.values()), support_nodes, surface_weights, surface_areas,
-                    element_type)
+                    element_type, surface_triangles)
     finally:
         gmsh.finalize()
