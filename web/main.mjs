@@ -1,10 +1,65 @@
 import { analyzeBeam, PRESETS } from "./beam.mjs";
+import { reviewBeam, reviewCad, reviewFrameStudies } from "./bean_advisor.mjs";
 const byId=(id)=>document.getElementById(id);
 let viewer=null;
 let mode="demo";
 let currentFile=null;
 let points={fixed:null,load:null};
 let calculated=null;
+let beanPreviousMessage="";
+
+function updateBean(){
+  const review=mode==="demo" ? reviewBeam(beamInput(), calculated) :
+    reviewCad({filename:currentFile?.name||"",fixed:points.fixed,load:points.load});
+  byId("beanHeadline").textContent=review.headline;
+  byId("beanAdvice").textContent=review.advice;
+  const newMessage=review.headline+"|"+review.advice;
+  if(beanPreviousMessage && newMessage!==beanPreviousMessage){
+    const mascot=byId("beanMascot").parentElement;
+    if(!matchMedia("(prefers-reduced-motion: reduce)").matches){
+      mascot.classList.remove("bean-respond");
+      void mascot.offsetWidth;
+      mascot.classList.add("bean-respond");
+    }
+  }
+  beanPreviousMessage=newMessage;
+}
+
+async function showFrameEvidence(){
+  const target=byId("beanStudyList");
+  try {
+    const response=await fetch("./data/frame_studies.json",{cache:"no-store"});
+    if(!response.ok)throw new Error("Solver reference unavailable");
+    const evidence=await response.json();
+    if(evidence.schema!=="ezfea.frame_evidence.v1" ||
+       !Array.isArray(evidence.studies) || evidence.studies.length!==3){
+      throw new Error("Unrecognized reference format");
+    }
+    const check=reviewFrameStudies(evidence.studies);
+    target.replaceChildren();
+    for(const entry of evidence.studies){
+      const row=document.createElement("div");
+      row.className="bean-study-row";
+      const name=document.createElement("strong");
+      name.textContent=entry.name;
+      const info=document.createElement("span");
+      info.textContent="Deflection "+format(entry.max_displacement_mm,4)+" mm · Stress "+
+        format(entry.max_von_mises_mpa,4)+" MPa";
+      row.append(name,info);
+      target.appendChild(row);
+    }
+    const note=document.createElement("p");
+    note.className="bean-study-takeaway";
+    note.textContent=check.bracedStiffer ?
+      "BEAN check: the braced frame deflected "+format(check.ratio,3)+
+      "× less under identical lateral loading." :
+      "BEAN check: bracing comparison requires investigation.";
+    target.appendChild(note);
+  } catch(_error){
+    target.textContent="Recorded 3D results could not be loaded. The beam demo still works.";
+  }
+}
+
 
 function announce(msg){byId("modelStatus").textContent=msg;}
 function number(id){return Number(byId(id).value);}
@@ -29,6 +84,7 @@ function clearResults(){
   byId("resultValues").hidden=true;
   byId("resultPlaceholder").hidden=mode!=="demo";
   byId("cadNoSolver").hidden=mode==="demo";
+  updateBean();
 }
 function updateMode(){
   const demo=mode==="demo";
@@ -72,6 +128,7 @@ function calculate(){
   try{
     const b=analyzeBeam(beamInput(),8);
     calculated=b;
+    updateBean();
     byId("resultPlaceholder").hidden=true;
     byId("cadNoSolver").hidden=true;
     byId("resultValues").hidden=false;
@@ -112,6 +169,7 @@ function beginMark(which){
 function onPick(which,location){
   points[which]=location;
   setupSelection();
+  updateBean();
   announce((which==="fixed"?"Connection":"Force location")+" marked. This is a visual reference, not a solver constraint.");
 }
 function downloadSetup(){
@@ -224,6 +282,16 @@ function start(){
   }
   byId("force").addEventListener("input",()=>{
     if(mode==="demo")clearResults();
+  });
+  byId("beanMascot").addEventListener("error",()=>{
+    const image=byId("beanMascot");
+    if(!image.src.endsWith("/assets/bean-icon.svg"))image.src="./assets/bean-icon.svg";
+  });
+  byId("beanFrameStudies").addEventListener("toggle",event=>{
+    if(event.target.open && !event.target.dataset.loaded){
+      event.target.dataset.loaded="yes";
+      void showFrameEvidence();
+    }
   });
   const drop=byId("dropZone");
   drop.addEventListener("keydown",(event)=>{
