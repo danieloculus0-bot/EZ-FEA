@@ -13,6 +13,7 @@ let evidencePromise=null;
 
 function updateBean(){
   const review=mode==="demo" ? reviewBeam(beamInput(), calculated) :
+    mode==="frame" ? reviewFrameSelection(frameStudy,publishedFrames?.studies||[]) :
     reviewCad({filename:currentFile?.name||"",fixed:points.fixed,load:points.load});
   byId("beanHeadline").textContent=review.headline;
   byId("beanAdvice").textContent=review.advice;
@@ -177,26 +178,35 @@ function format(value,digits=3){
 function clearResults(){
   calculated=null;
   byId("resultValues").hidden=true;
+  byId("frameResultValues").hidden=true;
   byId("resultPlaceholder").hidden=mode!=="demo";
-  byId("cadNoSolver").hidden=mode==="demo";
+  byId("cadNoSolver").hidden=mode!=="custom";
   updateBean();
 }
 function updateMode(){
   const demo=mode==="demo";
+  const frame=mode==="frame";
   byId("beamControls").hidden=!demo;
+  byId("beamLoadControls").hidden=frame;
+  byId("materialControls").hidden=frame;
+  byId("frameParameters").hidden=!frame;
   byId("demoConnections").hidden=!demo;
-  byId("customConnections").hidden=demo;
+  byId("frameConnections").hidden=!frame;
+  byId("customConnections").hidden=mode!=="custom";
   byId("runBtn").hidden=!demo;
   byId("runCaption").hidden=!demo;
   byId("viewerOverlay").hidden=!demo;
-  byId("viewBadge").textContent=demo?"BEAM EXAMPLE":"CAD PREVIEW ONLY";
-  byId("viewerHeading").textContent=demo?"Example beam":(currentFile?.name||"Your model");
-  byId("viewerSub").textContent=demo?"Real 2D beam calculation, visualized in 3D":"Geometry only. No structural solve has been performed.";
+  byId("viewBadge").textContent=demo?"BEAM EXAMPLE":frame?"VERIFIED SOLVER STUDY":"CAD PREVIEW ONLY";
+  byId("viewerHeading").textContent=demo?"Example beam":frame?frameStudy.name:(currentFile?.name||"Your model");
+  byId("viewerSub").textContent=demo?"Real 2D beam calculation, visualized in 3D":
+    frame?"Reference geometry · recorded native 3D CalculiX results":"Geometry only. No structural solve has been performed.";
   byId("modeDesc").textContent=demo?
     "Try the example and see real calculated displacement and bending stress.":
+    frame?"Actual saved 3D finite-element results from GitHub Actions; fixed study conditions.":
     "We can preview and mark locations on this part, but a full 3D FEA solver is not available on GitHub Pages.";
   byId("connectionHint").textContent=demo?
     "The beam is held still on the left. Its far end gets pushed down.":
+    frame?"The reference studies restrain bottom faces and distribute load on the top face.":
     "Choose a marker, then click the model where the connection or force acts.";
   clearResults();
 }
@@ -211,6 +221,8 @@ function renderDemo(){
 function useDemo(){
   mode="demo";
   currentFile=null;
+  frameStudy=null;
+  byId("frameSelect").value="";
   points={fixed:null,load:null};
   byId("fileInput").value="";
   byId("partInfo").textContent="Example: 150 × 25 × 10 mm beam";
@@ -343,6 +355,8 @@ async function openPart(file){
     else viewer.showObj(await file.text());
     mode="custom";
     currentFile=file;
+    frameStudy=null;
+    byId("frameSelect").value="";
     points={fixed:null,load:null};
     byId("partInfo").textContent=file.name+" · "+Math.max(1,Math.round(file.size/1024))+" KB";
     updateMode();
@@ -358,6 +372,10 @@ function start(){
   byId("resetDemoTop").addEventListener("click",useDemo);
   byId("runBtn").addEventListener("click",calculate);
   byId("resetView").addEventListener("click",()=>viewer?.focus());
+  byId("frameSelect").addEventListener("change",(event)=>{
+    if(event.target.value)selectFrameStudy(event.target.value);
+  });
+  void populateFrameSelector();
   byId("fileInput").addEventListener("change",e=>openPart(e.target.files?.[0]));
   byId("setFixedBtn").addEventListener("click",()=>beginMark("fixed"));
   byId("setLoadBtn").addEventListener("click",()=>beginMark("load"));
@@ -410,7 +428,7 @@ function start(){
   updateMode();
   import("./viewer.mjs").then(({Viewer})=>{
     viewer=new Viewer(byId("viewerCanvas"),onPick);
-    renderDemo();
+    if(mode==="frame")renderFrameStudy(); else renderDemo();
   }).catch(err=>{
     byId("fallback").hidden=false;
     announce("3D preview unavailable: "+err.message+". Beam calculation still works.");
