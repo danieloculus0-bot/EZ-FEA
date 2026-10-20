@@ -66,6 +66,7 @@ class Analysis:
     material: Material = Material()
     connections: tuple[FaceConstraint, ...] = ()
     loads: tuple[FaceLoad, ...] = ()
+    element_type: str = "C3D4"  # C3D4 linear or C3D10 quadratic tetrahedra
 
     @property
     def active_connections(self):
@@ -88,6 +89,8 @@ class Analysis:
             raise ValueError("Select an existing .step or .stp file.")
         if not math.isfinite(self.mesh_size_mm) or self.mesh_size_mm <= 0:
             raise ValueError("Mesh size must be positive (mm).")
+        if self.element_type not in ("C3D4", "C3D10"):
+            raise ValueError("Element type must be C3D4 or C3D10.")
         extended = bool(self.connections or self.loads)
         if extended:
             if not self.connections or not self.loads:
