@@ -57,6 +57,31 @@ class FaceLoad:
 
 
 @dataclass(frozen=True)
+class FaceFootprintLoad:
+    """Finite distributed traction footprint on an existing CAD face.
+
+    The Gaussian center and spread define an idealized pad/contact pressure
+    footprint, with *total prescribed force* in N. This is NOT nonlinear
+    contact, Hertz pressure, or a loaded bolt. Its actual resultant point
+    is integrated over the selected face and recorded independently.
+    """
+    face: int
+    force_n: tuple[float,float,float]
+    center_mm: tuple[float,float,float]
+    spread_mm: float
+
+    def validate(self):
+        if type(self.face) is not int or self.face<=0:
+            raise ValueError("Footprint load face must be a positive CAD face ID.")
+        if len(self.force_n)!=3 or not all(math.isfinite(v) for v in self.force_n) or not any(self.force_n):
+            raise ValueError("Footprint total force requires a finite nonzero XYZ vector.")
+        if len(self.center_mm)!=3 or not all(math.isfinite(v) for v in self.center_mm):
+            raise ValueError("Footprint center must have finite XYZ coordinates in mm.")
+        if not math.isfinite(self.spread_mm) or self.spread_mm<=0:
+            raise ValueError("Footprint spread must be positive and finite in mm.")
+
+
+@dataclass(frozen=True)
 class Analysis:
     step_file: str
     fixed_face: int
@@ -65,7 +90,7 @@ class Analysis:
     mesh_size_mm: float
     material: Material = Material()
     connections: tuple[FaceConstraint, ...] = ()
-    loads: tuple[FaceLoad, ...] = ()
+    loads: tuple[FaceLoad | FaceFootprintLoad, ...] = ()
     element_type: str = "C3D4"  # C3D4 linear or C3D10 quadratic tetrahedra
 
     @property
