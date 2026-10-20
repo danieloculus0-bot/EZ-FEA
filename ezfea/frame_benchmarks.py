@@ -122,15 +122,27 @@ def case_from_step(spec:FrameSpec, step_file, mesh_size_mm=14.):
     flat_at=lambda face,z: abs(face.bbox_mm[2]-z)<tol and abs(face.bbox_mm[5]-z)<tol
     bottoms=[f for f in faces if flat_at(f,0.)]
     tops=[f for f in faces if flat_at(f,h)]
-    if len(bottoms) != (2 if spec.construction=="portal" else 1):
-        raise ValueError(f"{spec.key}: ambiguous footing faces ({len(bottoms)}), cannot guess.")
-    if len(tops) != 1:
-        raise ValueError(f"{spec.key}: ambiguous load faces ({len(tops)}), cannot guess.")
+    if len(bottoms) < 1 or len(tops) < 1:
+        raise ValueError(f"{spec.key}: missing footing or load face, cannot guess.")
+    # The STEP Boolean may split coplanar exterior faces into several patches.
+    # Include all patches on each prescribed plane, apportioning top load by
+    # their actual rectangle areas (all selected planes are axis-aligned).
+    patches=[]
+    for face in tops:
+        xmin,ymin,_,xmax,ymax,_=face.bbox_mm
+        area=(xmax-xmin)*(ymax-ymin)
+        if area<=0:
+            raise ValueError(f"{spec.key}: degenerate top load patch.")
+        patches.append((face,area))
+    total_area=sum(area for _,area in patches)
+    loads=tuple(FaceLoad(f.tag,tuple(value*area/total_area
+                                   for value in spec.load_n))
+                for f,area in patches)
     return Analysis(
         str(step_file), 0, 0, (0.,0.,0.), mesh_size_mm,
         material=Material(),
         connections=tuple(FaceConstraint(f.tag) for f in sorted(bottoms,key=lambda f:f.center_mm[0])),
-        loads=(FaceLoad(tops[0].tag,spec.load_n),)
+        loads=loads
     )
 
 
