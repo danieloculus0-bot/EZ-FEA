@@ -88,6 +88,7 @@ def run_refinement(
             "max_displacement_mm": displacement,
             "max_von_mises_mpa": stress,
             "force_balance_relative_error": physics["force_balance_relative_error"],
+            "stress_distance_bands":physics.get("stress_distance_bands"),
             "run_directory": str(run_path.relative_to(root)),
         }
         if analytical_displacement_mm is not None:
