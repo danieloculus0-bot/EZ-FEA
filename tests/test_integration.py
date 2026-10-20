@@ -1,4 +1,5 @@
 """Optional real Gmsh+CalculiX cantilever smoke test."""
+import json
 import os
 import shutil
 import tempfile
@@ -30,5 +31,12 @@ class SolverSmokeTest(unittest.TestCase):
             loaded=min(faces,key=lambda f:abs(f.center_mm[0]-100))
             output=run_case(Analysis(str(step),fixed.tag,loaded.tag,(0,-100,0),7),root/"runs")
             self.assertTrue((output/"analysis.frd").exists())
+            record=json.loads((output/"case.json").read_text())
+            metrics=record["results"]
+            self.assertEqual(record["status"],"completed",record)
+            self.assertEqual(metrics["force_balance_check"],"pass")
+            self.assertGreater(metrics["max_von_mises_mpa"],0)
+            self.assertGreater(metrics["max_displacement_mm"],0)
+            self.assertLess(metrics["force_balance_relative_error"],.01)
 
 if __name__=="__main__":unittest.main()
