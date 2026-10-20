@@ -9,6 +9,7 @@ from .solver import nodal_force_components, run_calculix, write_input
 from .results import summarize_dat
 from .stress_diagnostics import stress_distance_bands
 from .stress_probes import recover_fixed_stress
+from .stress_interpolation import recover_affine_gauss_stress
 from .bean import send_to_bean_inbox
 
 def run_case(case: Analysis, output_root="runs", *, fixed_stress_probes=None):
@@ -54,6 +55,9 @@ def run_case(case: Analysis, output_root="runs", *, fixed_stress_probes=None):
         if fixed_stress_probes is not None:
             metrics["fixed_coordinate_stress"] = recover_fixed_stress(
                 out/"analysis.dat",mesh,fixed_stress_probes)
+            if mesh.element_type=="C3D10":
+                metrics["fixed_coordinate_stress_affine"] = recover_affine_gauss_stress(
+                    out/"analysis.dat",mesh,fixed_stress_probes)
         meta["results"] = metrics
         meta["max_displacement_mm"] = metrics["max_displacement_mm"]
         # A static solver can finish but still produce physically suspect results.
