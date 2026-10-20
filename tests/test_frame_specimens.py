@@ -10,7 +10,7 @@ from ezfea.frame_benchmarks import STUDIES, FrameSpec, geometry_definition_sha25
 class FrameSpecTests(unittest.TestCase):
     def test_six_distinct_named_studies(self):
         self.assertEqual(len(STUDIES),6)
-        self.assertEqual(len({s.key for s in STUDIES}),3)
+        self.assertEqual(len({s.key for s in STUDIES}),6)
         self.assertEqual([s.construction for s in STUDIES],
                          ["portal","rectangle","braced","portal","rectangle","braced"])
 
