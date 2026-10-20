@@ -67,3 +67,33 @@ and independent validation are needed. No published safety claim is supported.
 The report is a **success for numerical observability and repeatability**,
 but evidence that the current C3D4 implementation is **not yet generally
 mesh-independent for these frames**. Do not relabel it converged.
+
+## Quadratic element comparison — 2026-10-20
+
+[Full native Gmsh + CalculiX 12-run comparison](https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/39499859849).
+The solver now supports explicitly selected **C3D10** 10-node tetrahedra as well as
+the backward-compatible **C3D4** formulation. It reorders Gmsh midside
+tetrahedral nodes for CalculiX and distributes total force consistently over
+planar quadratic triangular facets. Native cantilever and controlled frame
+analyses passed solver completion and equilibrium tests.
+
+For the same byte-identical CAD geometry under 250 N lateral loading, with
+three requested mesh sizes 14/10/7 mm:
+
+| Frame | Last C3D4 displacement change | Last C3D10 displacement change | C3D10 peak stress last change |
+|---|---:|---:|---:|
+| Rectangle under racking | 23.371% | **1.128%** | **13.910%** |
+| Braced rectangle under racking | 3.965% | **0.303%** | **12.185%** |
+
+Both C3D10 displacement histories meet the **two-successive-changes ≤ 5%**
+screening condition. The rectangle's 7-mm deflection changed from 0.0194903 mm
+under C3D4 to 0.0254805 mm under C3D10, consistent with earlier C3D4
+bending stiffness concerns. **Neither global peak stress history passed
+the separate two-step 10% stability screening.**
+
+These comparisons are **numerical consistency evidence, not analytical
+verification or physical validation**. They cover only two fused-solid frames
+under one load direction, planar face-loading assumptions, and idealized
+fixed faces. General C3D10 claims require broader geometry, curved face
+quadrature, higher refinement, stress sampling away from singularities,
+independent analytical benchmarks and physical results. Not for design signoff.
