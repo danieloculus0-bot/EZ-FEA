@@ -1,4 +1,4 @@
-"""Gmsh import and C3D4 tetrahedral meshing. Geometry units are mm."""
+"""Gmsh C3D4/C3D10 tetrahedral meshing. Geometry units are mm."""
 from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -7,13 +7,14 @@ from .core import Face
 @dataclass
 class Mesh:
     nodes: dict[int, tuple[float, float, float]]
-    elements: dict[int, tuple[int, int, int, int]]
+    elements: dict[int, tuple[int, ...]]
     fixed_nodes: list[int]
     force_weights: dict[int, float]
     loaded_area_mm2: float
     constraint_nodes: dict[int, list[int]] = field(default_factory=dict)
     load_weights_by_face: dict[int, dict[int, float]] = field(default_factory=dict)
     load_areas_by_face: dict[int, float] = field(default_factory=dict)
+    element_type: str = "C3D4"
 
 def _gmsh():
     try:
@@ -68,7 +69,44 @@ def distributed_force_weights(triangles, nodes):
         raise ValueError("Load face has zero triangulated area.")
     return {n:w/total for n,w in weights.items()}, total
 
-def build_mesh(step_file, fixed_face, loaded_face, mesh_size_mm, *, constraint_faces=None, load_faces=None):
+def distributed_quadratic_force_weights(triangles, nodes):
+    """Consistent uniform traction on planar T6 faces.
+
+    Exact quadratic triangular shape-function area integrals yield zero corner
+    resultant and A/3 at each midside node. Report physical total force.
+    For curved surfaces, this planar area approximation is not exact and must
+    eventually be replaced by isoparametric surface quadrature.
+    """
+    weights=defaultdict(float)
+    total=0.
+    for tri in triangles:
+        if len(tri)!=6:
+            raise ValueError("Expected T6 triangular faces.")
+        area=triangle_area(*(nodes[n] for n in tri[:3]))
+        if area<=0:
+            raise ValueError("Degenerate T6 load face.")
+        total+=area
+        for node in tri[3:]:
+            weights[node]+=area/3.
+    if total<=0:
+        raise ValueError("No T6 load face area.")
+    return {node:share/total for node,share in weights.items()},total
+
+
+def gmsh_to_calculix_tet10(connectivity):
+    """Reorder Gmsh edge nodes to CalculiX/Abaqus C3D10 ordering.
+
+    Gmsh edges 5..10: 12,23,31,14,34,24.
+    CalculiX C3D10: 12,23,31,14,24,34.
+    """
+    if len(connectivity)!=10:
+        raise ValueError("Gmsh second-order tetrahedron needs exactly 10 nodes.")
+    return tuple(connectivity[i] for i in (0,1,2,3,4,5,6,7,9,8))
+
+
+def build_mesh(step_file, fixed_face, loaded_face, mesh_size_mm, *, constraint_faces=None, load_faces=None, element_type="C3D4"):
+    if element_type not in ("C3D4", "C3D10"):
+        raise ValueError("Unsupported element type: expected C3D4 or C3D10.")
     gmsh = _gmsh()
     gmsh.initialize()
     try:
@@ -90,15 +128,22 @@ def build_mesh(step_file, fixed_face, loaded_face, mesh_size_mm, *, constraint_f
         ) - all_faces:
             raise ValueError("CAD face numbering changed or a selection is empty. Reinspect the part.")
         gmsh.model.mesh.generate(3)
+        if element_type=="C3D10":
+            # Convert the same meshed tetra topology to 10-node quadratic
+            # tets; Gmsh supplies midside nodes including on CAD faces.
+            gmsh.model.mesh.setOrder(2)
         ids, coords, _ = gmsh.model.mesh.getNodes()
         nodes = {int(n): tuple(float(v) for v in coords[i*3:i*3+3]) for i,n in enumerate(ids)}
         etypes, eids, enodes = gmsh.model.mesh.getElements(3)
         elems = {}
+        expected_type, nodes_per_element = (4,4) if element_type=="C3D4" else (11,10)
         for etype, labels, connectivity in zip(etypes, eids, enodes):
-            if int(etype) != 4:
-                raise RuntimeError(f"Unsupported solid element type {etype}. Expected C3D4.")
+            if int(etype)!=expected_type:
+                raise RuntimeError(f"Unsupported Gmsh 3D element {etype} for {element_type}.")
             for i,label in enumerate(labels):
-                elems[int(label)] = tuple(int(n) for n in connectivity[i*4:i*4+4])
+                conn=tuple(int(n) for n in connectivity[i*nodes_per_element:(i+1)*nodes_per_element])
+                elems[int(label)] = (conn if element_type=="C3D4"
+                                     else gmsh_to_calculix_tet10(conn))
         if not elems:
             raise ValueError("No solid elements generated.")
         support_nodes = {}
@@ -112,16 +157,22 @@ def build_mesh(step_file, fixed_face, loaded_face, mesh_size_mm, *, constraint_f
         for face in force_faces:
             ttypes, _, tnodes = gmsh.model.mesh.getElements(2, face)
             tris = []
+            expected_tri, stride=(2,3) if element_type=="C3D4" else (9,6)
             for etype, connectivity in zip(ttypes, tnodes):
-                if int(etype) != 2:
-                    raise ValueError("Expected T3 triangles on each load face.")
-                tris.extend(tuple(int(n) for n in connectivity[i:i+3])
-                            for i in range(0, len(connectivity), 3))
-            surface_weights[face], surface_areas[face] = distributed_force_weights(tris, nodes)
+                if int(etype)!=expected_tri:
+                    raise ValueError(f"Expected Gmsh type {expected_tri} surface triangles.")
+                tris.extend(tuple(int(n) for n in connectivity[i:i+stride])
+                            for i in range(0,len(connectivity),stride))
+            if not tris:
+                raise ValueError(f"Loaded face {face} has no surface triangles.")
+            surface_weights[face], surface_areas[face] = (
+                distributed_force_weights(tris,nodes) if element_type=="C3D4"
+                else distributed_quadratic_force_weights(tris,nodes))
         weights = surface_weights[force_faces[0]]
         if constraint_faces is None and set(weights) & set(fixed_nodes):
             raise ValueError("Connection and force regions overlap at mesh nodes.")
         return Mesh(nodes, elems, fixed_nodes, weights,
-                    sum(surface_areas.values()), support_nodes, surface_weights, surface_areas)
+                    sum(surface_areas.values()), support_nodes, surface_weights, surface_areas,
+                    element_type)
     finally:
         gmsh.finalize()
