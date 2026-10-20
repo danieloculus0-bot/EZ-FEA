@@ -39,6 +39,19 @@ class StressLocalizationTests(unittest.TestCase):
         self.assertEqual(data["outside_band_max_mpa"],[20.,15.])
         self.assertEqual(data["outside_band_integration_point_count"],[2,1])
 
+    def test_loaded_plane_exclusion_uses_same_physical_distance_on_each_mesh(self):
+        mesh=fixture()
+        mesh.force_weights={9:1/3,10:1/3,11:1/3}
+        with tempfile.TemporaryDirectory() as d:
+            file=Path(d)/"analysis.dat"
+            file.write_text(STRESS,encoding="utf-8")
+            data=stress_distance_bands(file,mesh)
+        self.assertEqual(data["load_plane_axis"],"Z")
+        self.assertAlmostEqual(data["load_plane_coordinate_mm"],40.)
+        self.assertAlmostEqual(data["global_peak_host_tet_centroid_distance_from_load_mm"],39.)
+        self.assertEqual(data["outside_load_band_max_mpa"],[100.,None])
+        self.assertEqual(data["outside_load_band_integration_point_count"],[1,0])
+
     def test_nonplanar_fixture_not_misrepresented(self):
         mesh=fixture()
         mesh.fixed_nodes=[1,2,3,4]
