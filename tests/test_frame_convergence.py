@@ -55,6 +55,41 @@ class FrameConvergenceTests(unittest.TestCase):
         self.assertIn("NOT solver validation",report)
         self.assertIn("Not for engineering sign-off",report)
 
+    def test_identical_xyz_stress_probes_across_meshes(self):
+        from ezfea.stress_probes import RECOVERY
+        case=synthetic_case()
+        for i,record in enumerate(case["refinement"]["records"]):
+            record["fixed_coordinate_stress"]={
+                "schema":"ezfea.fixed_stress_probes.v1",
+                "probes":{"joint":{
+                    "coordinate_mm":[14.3,9.2,166.7],
+                    "von_mises_mpa":[4.0,4.3,4.35][i],
+                    "host_element_id":[15,30,51][i],
+                    "inside_corner_tetra_margin":.12,
+                    "location_quality":"inside_element",
+                    "recovery":RECOVERY,
+                }},
+            }
+        observed=analyze_recorded_refinements([case])[0]
+        probe=observed["fixed_coordinate_stress_trends"][0]
+        self.assertEqual(probe["coordinate_mm"],[14.3,9.2,166.7])
+        self.assertEqual(probe["observation"],"limited_sensitivity_at_checked_mesh_sizes")
+        self.assertEqual(probe["host_element_ids"],[15,30,51])
+        self.assertIn("4.35",str(probe["von_mises_mpa"]))
+        sample={"studies":[observed],"generated_utc":"2026-10-20",
+                "overall_displacement_observation":"stable_at_checked_mesh_sizes",
+                "overall_peak_stress_observation":"mesh_sensitive",
+                "displacement_threshold_pct":5.,"peak_stress_screen_pct":10.}
+        self.assertIn("Fixed XYZ stress probes",report_markdown(sample))
+        broken=copy.deepcopy(case)
+        broken["refinement"]["records"][2]["fixed_coordinate_stress"]["probes"]["joint"]["coordinate_mm"][0]+=1
+        with self.assertRaisesRegex(ValueError,"moved"):
+            analyze_recorded_refinements([broken])
+        poor=copy.deepcopy(case)
+        poor["refinement"]["records"][0]["fixed_coordinate_stress"]["probes"]["joint"]["location_quality"]="near_element_boundary"
+        flagged=analyze_recorded_refinements([poor])[0]["fixed_coordinate_stress_trends"][0]
+        self.assertEqual(flagged["observation"],"near_element_boundary_check_probe")
+
     def test_refinement_flag_not_exaggerated(self):
         case=synthetic_case(disps=(1,1.18,1.30))
         actual=analyze_recorded_refinements([case])[0]
