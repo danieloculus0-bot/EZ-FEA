@@ -91,6 +91,7 @@ def run_refinement(
             "max_von_mises_mpa": stress,
             "force_balance_relative_error": physics["force_balance_relative_error"],
             "fixed_coordinate_stress": physics.get("fixed_coordinate_stress"),
+            "fixed_coordinate_stress_affine": physics.get("fixed_coordinate_stress_affine"),
             "stress_distance_bands":physics.get("stress_distance_bands"),
             "run_directory": str(run_path.relative_to(root)),
         }
