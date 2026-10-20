@@ -8,9 +8,10 @@ from .mesh import build_mesh
 from .solver import nodal_force_components, run_calculix, write_input
 from .results import summarize_dat
 from .stress_diagnostics import stress_distance_bands
+from .stress_probes import recover_fixed_stress
 from .bean import send_to_bean_inbox
 
-def run_case(case: Analysis, output_root="runs"):
+def run_case(case: Analysis, output_root="runs", *, fixed_stress_probes=None):
     case.validate()
     input_path = Path(case.step_file)
     out = Path(output_root) / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
@@ -50,6 +51,9 @@ def run_case(case: Analysis, output_root="runs"):
         # from the constrained plane in fixed *physical* distance bands.
         # This never replaces peak stress, equilibrium, or convergence checks.
         metrics["stress_distance_bands"] = stress_distance_bands(out/"analysis.dat",mesh)
+        if fixed_stress_probes is not None:
+            metrics["fixed_coordinate_stress"] = recover_fixed_stress(
+                out/"analysis.dat",mesh,fixed_stress_probes)
         meta["results"] = metrics
         meta["max_displacement_mm"] = metrics["max_displacement_mm"]
         # A static solver can finish but still produce physically suspect results.
