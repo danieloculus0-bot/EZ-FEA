@@ -30,6 +30,7 @@ def run_refinement(
     sizes_mm=(12.0, 8.0, 5.0),
     displacement_tolerance=0.05,
     analytical_displacement_mm=None,
+    fixed_stress_probes=None,
 ):
     """Collect independent native solves with identical non-mesh inputs.
 
@@ -68,9 +69,10 @@ def run_refinement(
     for index, mesh_size in enumerate(sizes):
         if hashlib.sha256(Path(case.step_file).read_bytes()).hexdigest() != source_sha:
             raise RuntimeError("STEP changed during refinement; results are not comparable")
-        run_path = run_case(
-            replace(case, mesh_size_mm=mesh_size), root / f"grid_{index+1:02d}"
-        )
+        run_input=replace(case,mesh_size_mm=mesh_size)
+        run_dir=root / f"grid_{index+1:02d}"
+        run_path=(run_case(run_input,run_dir, fixed_stress_probes=fixed_stress_probes)
+                  if fixed_stress_probes is not None else run_case(run_input,run_dir))
         raw = json.loads((run_path / "case.json").read_text(encoding="utf-8"))
         if (raw.get("status") != "completed" or raw.get("input_sha256") != source_sha
             or raw.get("mesh",{}).get("element_type","C3D4")!=case.element_type):
@@ -88,6 +90,7 @@ def run_refinement(
             "max_displacement_mm": displacement,
             "max_von_mises_mpa": stress,
             "force_balance_relative_error": physics["force_balance_relative_error"],
+            "fixed_coordinate_stress": physics.get("fixed_coordinate_stress"),
             "stress_distance_bands":physics.get("stress_distance_bands"),
             "run_directory": str(run_path.relative_to(root)),
         }
