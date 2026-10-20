@@ -1,0 +1,55 @@
+name: Native Surface Load Introduction Physics
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "ezfea/core.py"
+      - "ezfea/load_footprints.py"
+      - "ezfea/mesh.py"
+      - "ezfea/solver.py"
+      - "ezfea/results.py"
+      - "ezfea/workflow.py"
+      - "ezfea/load_introduction_benchmarks.py"
+      - "tests/test_load_footprints.py"
+      - "tests/test_workflow.py"
+      - ".github/workflows/load-introduction.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: load-introduction-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  real-traction-model:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install native Gmsh and CalculiX dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y calculix-ccx libglu1-mesa
+          python -m pip install -r requirements.txt
+      - name: Check T3/T6 consistent traction, eccentric moments and workflow gates
+        run: |
+          python -m unittest discover -s tests -p test_load_footprints.py -v
+          python -m unittest discover -s tests -p test_workflow.py -v
+      - name: Native 100N uniform versus centered and eccentric footprints
+        run: |
+          python -m ezfea.load_introduction_benchmarks --out load_introduction_artifacts --meshes 10 7
+          cat load_introduction_artifacts/LOAD_INTRODUCTION_REPORT.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Archive actual CAD, traction decks, solver physics and wrench audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: EZ-FEA-real-traction-footprint-evidence
+          path: load_introduction_artifacts/
+          if-no-files-found: warn
+          retention-days: 30
