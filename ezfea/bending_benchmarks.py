@@ -72,9 +72,9 @@ def run_bending_reference(output_root="runs/bending_reference", *,
                 raise ValueError(f"Failed native cantilever solve: {out}")
             metrics=record["results"]
             actual_disp=metrics["max_displacement_mm"]
-            measured=(metrics["fixed_coordinate_stress_affine"]["probes"][probe.keys().__iter__().__next__()]
-                      if element_type=="C3D10" else
-                      metrics["fixed_coordinate_stress"]["probes"][probe.keys().__iter__().__next__()])
+            recovery_key=("fixed_coordinate_stress_affine" if element_type=="C3D10"
+                          else "fixed_coordinate_stress")
+            measured=metrics[recovery_key]["probes"]["outer_fiber_at_midspan"]
             axial_sigma=abs(measured["tensor_mpa"][0])
             rows.append({
                 "element_type":element_type,
