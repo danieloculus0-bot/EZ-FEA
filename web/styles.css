@@ -311,3 +311,46 @@ summary { color:#e6f6e7; }
   .viewer-stage { height:360px; }
   .top-actions { gap:12px; }
 }
+
+
+/* BEAN: a compact advisor using the original site palette and official mascot. */
+.bean-panel {
+  align-items:flex-start;
+  padding:17px 18px;
+  gap:15px;
+  background:linear-gradient(132deg,#1c3522 0%,#13231a 67%,#101e16 100%);
+  border:1px solid #4d784e;
+}
+.bean-mascot {
+  width:100px;
+  min-width:100px;
+  aspect-ratio:1;
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+  background:radial-gradient(circle at 45% 30%,rgba(174,255,127,.24),transparent 65%);
+  border-radius:24px;
+}
+.bean-mascot img {display:block;width:100%;height:100%;object-fit:contain;}
+.bean-copy {flex:1;min-width:0;}
+.bean-heading {display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:7px;}
+.bean-heading strong {font:800 15px Manrope,sans-serif;color:#c5ff4a;letter-spacing:.2px;}
+.bean-heading strong span {font-size:11px;color:#daf4dd;letter-spacing:1px;margin-left:5px;}
+.bean-tier {border:1px solid #588259;border-radius:999px;padding:3px 8px;font-size:11px;color:#c6e9c7;background:#1d3825;}
+.bean-headline {display:block;font:800 15px/1.35 Manrope,sans-serif;color:#f0ffe8;}
+.bean-panel #beanAdvice {margin:5px 0 0;font-size:13px;line-height:1.55;color:#d6e8d4;}
+.bean-disclosure {font-size:11px!important;line-height:1.45!important;color:#9eb8a3!important;margin:8px 0!important;}
+.bean-studies {margin:11px 0 0;padding:10px 0 0;border-top:1px solid #42654a;}
+.bean-studies summary {font-size:12px;color:#c5ff4a;}
+.bean-studies[open] summary {margin-bottom:10px;}
+.bean-study-list {display:grid;gap:8px;}
+.bean-study-row {padding:9px;border-radius:8px;border:1px solid #3d5d43;background:#14291a;}
+.bean-study-row strong {font-size:12px;color:#eaffdf;display:block;}
+.bean-study-row span {display:block;margin-top:3px;font-size:12px;color:#c4dbc6;}
+.bean-study-takeaway {font-size:12px;color:#defaa7;font-weight:700;margin:3px 0;}
+.bean-study-source {display:inline-block;font-size:12px;color:#b9ff94;font-weight:700;text-decoration:underline;text-underline-offset:3px;}
+@media (max-width:500px) {
+  .bean-panel {gap:10px;padding:14px;}
+  .bean-mascot {width:69px;min-width:69px;border-radius:18px;}
+  .bean-heading strong span {display:block;margin:2px 0 0;}
+}
