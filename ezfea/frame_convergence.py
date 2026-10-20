@@ -114,7 +114,7 @@ def report_markdown(report):
         "",
         f"Run date (UTC): {report['generated_utc']}",
         "",
-        f"Element type: {report['element_type']}. These are real Gmsh + CalculiX solves, not BEAN estimates.",
+        f"Element type: {report.get('element_type','C3D4')}. These are real Gmsh + CalculiX solves, not BEAN estimates.",
         "All six cases retain the same STEP geometry, material, supports and total force",
         "within each three-grid comparison; only requested mesh size changes.",
         "",
