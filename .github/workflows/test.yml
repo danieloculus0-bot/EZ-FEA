@@ -12,5 +12,15 @@ jobs:
           python-version: '3.12'
       - name: Check Python syntax
         run: python -m compileall -q app.py ezfea tests
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check browser JavaScript syntax
+        run: |
+          node --check web/main.mjs
+          node --check web/viewer.mjs
+          node --check web/beam.mjs
+      - name: Test browser finite elements
+        run: node --test web/tests/*.test.mjs
       - name: Unit test
         run: python -m unittest discover -s tests -v
