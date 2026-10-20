@@ -90,7 +90,7 @@ export class Viewer {
     const loadArrow=new THREE.ArrowHelper(
       new THREE.Vector3(0,-1,0),
       new THREE.Vector3(length,height/2+Math.max(height*2.6,length*.20),0),
-      Math.max(height*2.35,length*.18),0xe77533,
+      Math.max(height*2.35,length*.18),0xc5ff4a,
       Math.max(2,Math.min(height*.75,length*.045)),Math.max(1.1,height*.4));
     this.geometryGroup.add(loadArrow);
     this.bounds=new THREE.Box3().setFromObject(this.geometryGroup);
@@ -185,7 +185,7 @@ export class Viewer {
     const dimensions=this.bounds.getSize(new THREE.Vector3());
     const radius=Math.max(dimensions.length()*.012,0.3);
     const marker=new THREE.Mesh(new THREE.SphereGeometry(radius,20,12),
-      new THREE.MeshBasicMaterial({color:mode==="fixed"?0x16b88b:0xf27a31,depthTest:false}));
+      new THREE.MeshBasicMaterial({color:mode==="fixed"?0x16b88b:0xc5ff4a,depthTest:false}));
     marker.position.copy(point);
     marker.renderOrder=3;
     marker.name=mode;
@@ -198,11 +198,11 @@ export class Viewer {
     const amplification=Math.min(5000,Math.max(1,size*.12/result.deflection_mm));
     const points=result.curve.map(p=>new THREE.Vector3(p.x,p.y*amplification,0));
     const lineGeometry=new THREE.BufferGeometry().setFromPoints(points);
-    const line=new THREE.Line(lineGeometry,new THREE.LineBasicMaterial({color:0xe5753b,linewidth:3}));
+    const line=new THREE.Line(lineGeometry,new THREE.LineBasicMaterial({color:0xc5ff4a,linewidth:3}));
     this.overlayGroup.add(line);
     const tip=points.at(-1);
     const endBall=new THREE.Mesh(new THREE.SphereGeometry(Math.max(height*.12,1),12,10),
-      new THREE.MeshBasicMaterial({color:0xe5753b}));
+      new THREE.MeshBasicMaterial({color:0xc5ff4a}));
     endBall.position.copy(tip);
     this.overlayGroup.add(endBall);
     return amplification;
