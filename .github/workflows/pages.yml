@@ -62,28 +62,28 @@ jobs:
               if gh run download "$run" --repo "$GITHUB_REPOSITORY" \
                    --name EZ-FEA-web-physics-data --dir "$download_dir"; then
                 python - "$download_dir/frame_studies.json" "$run" <<'PY'
-import json, math, pathlib, sys
-from ezfea.frame_benchmarks import STUDIES
-
-path=pathlib.Path(sys.argv[1])
-data=json.loads(path.read_text(encoding="utf-8"))
-url=f"https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/{sys.argv[2]}"
-rows=data.get("studies")
-if (data.get("schema")!="ezfea.frame_evidence.v1" or
-    data.get("source_run")!=url or
-    not isinstance(rows,list) or
-    [r.get("key") for r in rows] != [s.key for s in STUDIES]):
-    raise SystemExit("Incorrect native solver evidence identity/provenance")
-for row in rows:
-    if (row.get("force_balance_check")!="pass" or
-        not all(isinstance(row.get(k),(int,float)) and math.isfinite(row[k])
-                for k in ("max_displacement_mm","max_von_mises_mpa",
-                          "force_balance_relative_error")) or
-        row["max_displacement_mm"]<=0 or row["max_von_mises_mpa"]<=0 or
-        not 0<=row["force_balance_relative_error"]<=0.01):
-        raise SystemExit("Rejected incomplete/nonfinite native FEA result")
-print(f"Verified {len(rows)} genuine archived frame results from run {sys.argv[2]}")
-PY
+          import json, math, pathlib, sys
+          from ezfea.frame_benchmarks import STUDIES
+          
+          path=pathlib.Path(sys.argv[1])
+          data=json.loads(path.read_text(encoding="utf-8"))
+          url=f"https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/{sys.argv[2]}"
+          rows=data.get("studies")
+          if (data.get("schema")!="ezfea.frame_evidence.v1" or
+              data.get("source_run")!=url or
+              not isinstance(rows,list) or
+              [r.get("key") for r in rows] != [s.key for s in STUDIES]):
+              raise SystemExit("Incorrect native solver evidence identity/provenance")
+          for row in rows:
+              if (row.get("force_balance_check")!="pass" or
+                  not all(isinstance(row.get(k),(int,float)) and math.isfinite(row[k])
+                          for k in ("max_displacement_mm","max_von_mises_mpa",
+                                    "force_balance_relative_error")) or
+                  row["max_displacement_mm"]<=0 or row["max_von_mises_mpa"]<=0 or
+                  not 0<=row["force_balance_relative_error"]<=0.01):
+                  raise SystemExit("Rejected incomplete/nonfinite native FEA result")
+          print(f"Verified {len(rows)} genuine archived frame results from run {sys.argv[2]}")
+          PY
                 cp "$download_dir/frame_studies.json" web/data/frame_studies.json
                 echo "Loaded verified physics data from run $run"
                 found=1
