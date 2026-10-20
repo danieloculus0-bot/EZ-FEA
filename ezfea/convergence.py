@@ -62,7 +62,7 @@ def run_refinement(
         "requested_mesh_sizes_mm": sizes,
         "displacement_change_threshold": displacement_tolerance,
         "analytical_displacement_mm": analytical_displacement_mm,
-        "note": "C3D4 peak stress may be singular; displacement stabilization is not engineering validation.",
+        "note": "Global peak stress may be mesh-sensitive; displacement stabilization is not engineering validation.",
     }
     records = []
     for index, mesh_size in enumerate(sizes):
@@ -72,7 +72,8 @@ def run_refinement(
             replace(case, mesh_size_mm=mesh_size), root / f"grid_{index+1:02d}"
         )
         raw = json.loads((run_path / "case.json").read_text(encoding="utf-8"))
-        if raw.get("status") != "completed" or raw.get("input_sha256") != source_sha:
+        if (raw.get("status") != "completed" or raw.get("input_sha256") != source_sha
+            or raw.get("mesh",{}).get("element_type","C3D4")!=case.element_type):
             raise RuntimeError(f"grid {index+1} failed or changed input; see {run_path}")
         physics = raw["results"]
         displacement = float(physics["max_displacement_mm"])
@@ -81,6 +82,7 @@ def run_refinement(
             raise RuntimeError(f"grid {index+1} has invalid physical results")
         record = {
             "mesh_size_mm": mesh_size,
+            "element_type":case.element_type,
             "node_count": raw["mesh"]["nodes"],
             "element_count": raw["mesh"]["elements"],
             "max_displacement_mm": displacement,
