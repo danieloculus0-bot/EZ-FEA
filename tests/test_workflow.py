@@ -31,7 +31,10 @@ class WorkflowTests(unittest.TestCase):
                 folder=run_case(case,root/"runs")
             meta=json.loads((folder/"case.json").read_text())
             bean=json.loads((folder/"bean_handoff.json").read_text())
-            self.assertEqual(meta["status"],"completed")
+            # A single reaction at the origin cannot balance the eccentric
+            # force's moment, even though resultant forces cancel.
+            self.assertEqual(meta["status"],"needs_review")
+            self.assertEqual(meta["results"]["moment_balance_check"],"review")
             self.assertEqual(bean["bean_review_status"],"not_requested")
             self.assertTrue((folder/"analysis.inp").exists())
             self.assertEqual(meta["results"]["force_balance_check"],"pass")
