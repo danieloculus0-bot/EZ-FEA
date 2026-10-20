@@ -1,0 +1,68 @@
+name: C3D4 vs C3D10 Native Comparison
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "ezfea/core.py"
+      - "ezfea/mesh.py"
+      - "ezfea/solver.py"
+      - "ezfea/results.py"
+      - "ezfea/workflow.py"
+      - "ezfea/convergence.py"
+      - "ezfea/frame_convergence.py"
+      - "scripts/compare_element_orders.py"
+      - "tests/test_quadratic_elements.py"
+      - "tests/test_integration.py"
+      - ".github/workflows/element-order-comparison.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: c3d10-validation-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install real mesher and physics engine
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y calculix-ccx libglu1-mesa
+          python -m pip install -r requirements.txt
+      - name: Check quadratic connectivity and load-distribution math
+        run: |
+          python -m unittest discover -s tests -p test_quadratic_elements.py -v
+      - name: C3D4 control runs (2 frames x 3 grids)
+        run: |
+          python -m ezfea.frame_convergence --out element_order_studies/C3D4 \
+            --element-type C3D4 --meshes 14 10 7 \
+            --cases 02_rectangle_racking 03_braced_racking
+      - name: Genuine C3D10 solves (same 2 frames x 3 grids)
+        run: |
+          python -m ezfea.frame_convergence --out element_order_studies/C3D10 \
+            --element-type C3D10 --meshes 14 10 7 \
+            --cases 02_rectangle_racking 03_braced_racking
+      - name: Independently compare matching sources and displacement trends
+        run: |
+          python -m scripts.compare_element_orders \
+            --linear element_order_studies/C3D4/convergence_summary.json \
+            --quadratic element_order_studies/C3D10/convergence_summary.json \
+            --out element_order_studies
+          cat element_order_studies/COMPARISON.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Save raw native simulation files and comparison
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: EZ-FEA-C3D4-vs-C3D10-real-physics
+          path: element_order_studies/
+          retention-days: 30
+          if-no-files-found: warn
