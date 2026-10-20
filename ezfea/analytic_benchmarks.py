@@ -115,10 +115,10 @@ def main():
     args=parser.parse_args()
     data=run_axial_reference(args.out,meshes_mm=args.meshes)
     print((Path(args.out)/"ANALYTICAL_REPORT.md").read_text(encoding="utf-8"))
-    if any(x["relative_nominal_stress_error"]>.15 or
-           x["relative_elongation_approximation_error"]>.15 or
+    if any(x["relative_nominal_stress_error"]>.02 or
+           x["relative_elongation_approximation_error"]>.02 or
            x["native_equilibrium_relative_error"]>.01 for x in data["rows"]):
-        raise SystemExit("Native solver differs >15% from simple 1D reference; investigate rather than mark validated.")
+        raise SystemExit("Native solver differs >2% from simple 1D reference; investigate rather than mark validated.")
 
 
 if __name__=="__main__":
