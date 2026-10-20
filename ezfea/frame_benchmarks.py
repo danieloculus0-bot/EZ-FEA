@@ -1,4 +1,4 @@
-"""Deterministic *definition* of three small welded-frame physics specimens.
+"""Deterministic *definition* of repeatable small frame physics specimens.
 
 These are monolithic Boolean-fused solid weldment analogues, not contact/bolt/
 weld-connector assemblies. The shared outer dimensions make racking comparisons
@@ -49,6 +49,9 @@ STUDIES = (
     FrameSpec("01_portal_vertical", "portal", load_n=(0., 0., -250.)),
     FrameSpec("02_rectangle_racking", "rectangle"),
     FrameSpec("03_braced_racking", "braced"),
+    FrameSpec("04_portal_racking", "portal"),
+    FrameSpec("05_rectangle_vertical", "rectangle", load_n=(0., 0., -250.)),
+    FrameSpec("06_braced_vertical", "braced", load_n=(0., 0., -250.)),
 )
 
 
@@ -62,8 +65,7 @@ def geometry_definition_sha256(spec):
 def create_step(spec: FrameSpec, destination):
     """Create one continuously fused solid from rectangular CAD prisms.
 
-    Gmsh OpenCascade must be present. All lengths are millimeters; the three
-    examples use solid stock to isolate the FEA engine from wall thickness,
+    Gmsh OpenCascade must be present. All lengths are millimeters; the examples use solid stock to isolate the FEA engine from wall thickness,
     bolted/tied connectors, beam shell theory, and contact.
     """
     spec.check()
@@ -191,7 +193,7 @@ def run_study(spec, root, mesh_size_mm=14., *, generate_only=False):
 
 
 def run_suite(output_dir,mesh_size_mm=14.,*,generate_only=False):
-    """Same three cases each run; compare like-for-like lateral racking.
+    """Same six cases each run; compare matched lateral and vertical loading.
 
     Relative stiffness check is a useful regression, not ground truth for
     accurate welded frames. Record numbers without claiming convergence.
@@ -203,8 +205,9 @@ def run_suite(output_dir,mesh_size_mm=14.,*,generate_only=False):
             "comparison":"Braced and unbraced rectangular frames share dimensions and lateral load.",
             "engineering_status":"experimental_unvalidated"}
     if not generate_only:
-        plain=results[1]["max_displacement_mm"]
-        braced=results[2]["max_displacement_mm"]
+        by_key={item["key"]:item for item in results}
+        plain=by_key["02_rectangle_racking"]["max_displacement_mm"]
+        braced=by_key["03_braced_racking"]["max_displacement_mm"]
         report["bracing_stiffness_ratio_unbraced_to_braced"]=plain/braced
         report["braced_displacement_less_than_unbraced"]=braced<plain
         if not braced < plain:
@@ -212,6 +215,10 @@ def run_suite(output_dir,mesh_size_mm=14.,*,generate_only=False):
                 "Physics regression: the idealized braced frame should "
                 "deflect less than its otherwise identical unbraced frame."
             )
+        report["vertical_frame_ratio_unbraced_to_braced"] = (
+            by_key["05_rectangle_vertical"]["max_displacement_mm"] /
+            by_key["06_braced_vertical"]["max_displacement_mm"]
+        )
     target=Path(output_dir)/"suite_summary.json"
     target.write_text(json.dumps(report,indent=2,default=str)+"\n",encoding="utf-8")
     return report
