@@ -113,7 +113,8 @@ def assemble_surface_loads(case,mesh):
         }
         if isinstance(load,FaceFootprintLoad):
             details["spread_mm"]=load.spread_mm
-            details["nominal_peak_traction_n_per_mm2"]=fscale/model["weighted_footprint_area_mm2"]
+            details["gaussian_envelope_peak_traction_n_per_mm2"]=(
+                math.dist(load.force_n,(0.,0.,0.))/model["weighted_footprint_area_mm2"])
             details["caveat"]="Prescribed total Gaussian traction on a CAD face, not a computed pad contact law."
         evidence.append(details)
     return combined,evidence
