@@ -1,0 +1,54 @@
+name: Native STEP Mate Detection and Joint Matrix
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "ezfea/assembly_mates.py"
+      - "ezfea/joint_matrix.py"
+      - "scripts/build_assembly_mate_evidence.py"
+      - "tests/test_assembly_mates.py"
+      - "web/joint_matrix_core.mjs"
+      - "web/joint_matrix.mjs"
+      - "web/joint-matrix.html"
+      - "web/tests/joint_matrix.test.mjs"
+      - ".github/workflows/assembly-mate-review.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-step:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install CAD geometry backend
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libglu1-mesa
+          python -m pip install -r requirements.txt
+      - name: Validate candidate mate graph and spreadsheet operations
+        run: |
+          python -m unittest discover -s tests -p test_assembly_mates.py -v
+          node --check web/joint_matrix_core.mjs
+          node --check web/joint_matrix.mjs
+          node --test web/tests/joint_matrix.test.mjs
+      - name: Scan actual independent-solid STEP and create edit-ready matrix
+        run: |
+          python -m scripts.build_assembly_mate_evidence --out mate_review_evidence
+          cat mate_review_evidence/MATE_DETECTION_REPORT.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Archive native STEP, candidate graph and editable matrix
+        uses: actions/upload-artifact@v4
+        with:
+          name: EZ-FEA-STEP-mate-detection-and-joint-matrix
+          path: mate_review_evidence/
+          if-no-files-found: error
+          retention-days: 30
