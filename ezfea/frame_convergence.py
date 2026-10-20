@@ -80,6 +80,47 @@ def analyze_recorded_refinements(cases, *, displacement_tolerance=.05,
             # This analyzer normally uses the same displacement tolerance
             # passed into run_refinement. Mismatch indicates an invalid report.
             raise ValueError("Raw convergence assessment mismatches parameters")
+        probe_data=[r.get("fixed_coordinate_stress") for r in records]
+        fixed_probe_trends=None
+        if any(p is not None for p in probe_data):
+            if any(not isinstance(p,dict) or p.get("schema")!="ezfea.fixed_stress_probes.v1"
+                   for p in probe_data):
+                raise ValueError("Fixed-coordinate stress evidence missing on one or more meshes")
+            names=list(probe_data[0]["probes"])
+            if not names or any(set(p["probes"])!=set(names) for p in probe_data):
+                raise ValueError("Fixed stress probe names changed across mesh sizes")
+            fixed_probe_trends=[]
+            for name in names:
+                readings=[item["probes"][name] for item in probe_data]
+                positions=[reading["coordinate_mm"] for reading in readings]
+                if any(x!=positions[0] for x in positions):
+                    raise ValueError(f"{name}: physical XYZ probe moved between refinements")
+                if any(reading.get("recovery")!=RECOVERY or
+                       not isinstance(reading.get("von_mises_mpa"),(int,float)) or
+                       not math.isfinite(reading["von_mises_mpa"]) or
+                       reading["von_mises_mpa"]<0 for reading in readings):
+                    raise ValueError(f"{name}: unavailable native probe tensor")
+                recovered=[reading["von_mises_mpa"] for reading in readings]
+                changes=[relative_change(a,b) for a,b in zip(recovered,recovered[1:])]
+                quality=[reading.get("location_quality") for reading in readings]
+                healthy=all(q=="inside_element" for q in quality)
+                fixed_probe_trends.append({
+                    "name":name,
+                    "coordinate_mm":positions[0],
+                    "recovery":RECOVERY,
+                    "von_mises_mpa":recovered,
+                    "adjacent_relative_changes":changes,
+                    "last_change_pct":100*changes[-1],
+                    "host_element_ids":[r["host_element_id"] for r in readings],
+                    "location_quality":quality,
+                    "min_barycentric_margins":[r["inside_corner_tetra_margin"] for r in readings],
+                    "observation":(
+                        "near_element_boundary_check_probe" if not healthy
+                        else "limited_sensitivity_at_checked_mesh_sizes"
+                        if increasing and all(v<=peak_stress_tolerance for v in changes[-2:])
+                        else "mesh_sensitive_at_checked_mesh_sizes"
+                    ),
+                })
         diagnostics=[r.get("stress_distance_bands") for r in records]
         band_trends=None
         peak_distances=None
@@ -145,6 +186,7 @@ def analyze_recorded_refinements(cases, *, displacement_tolerance=.05,
                                    else "mesh_sensitive_at_checked_mesh_sizes"),
                 })
         out.append({
+            "fixed_coordinate_stress_trends":fixed_probe_trends,
             "load_stress_band_trends":load_band_trends,
             "peak_host_tet_centroid_distance_from_load_mm":peak_load_distances,
             "stress_band_trends":band_trends,
@@ -200,6 +242,33 @@ def report_markdown(report):
             f"{fmt(r['fine_peak_stress_delta_pct'])}% | "
             f"{r['displacement_observation']} | {r['peak_stress_observation']} |"
         )
+    if any(r.get("fixed_coordinate_stress_trends") for r in report["studies"]):
+        lines.extend([
+            "",
+            "### Fixed XYZ stress probes across successive meshes",
+            "",
+            "Each XYZ is held constant in physical millimeters, NOT a changing",
+            "location of the mesh-global stress maximum. Measured native",
+            "integration-point *tensors* are averaged within the host tetrahedron.",
+            "This gives a piecewise-constant element recovery, NOT exact",
+            "pointwise C3D10 Gauss interpolation; boundaries are flagged.",
+            "",
+            "| Case | Probe | X,Y,Z (mm) | Last Δ von Mises | Location / trend |",
+            "|---|---|---|---:|---|",
+        ])
+        for row in report["studies"]:
+            for pr in row.get("fixed_coordinate_stress_trends") or []:
+                xyz=", ".join(f"{x:.2f}" for x in pr["coordinate_mm"])
+                lines.append(
+                    f"| {row['key']} | {pr['name']} | {xyz} | "
+                    f"{pr['last_change_pct']:.3g}% | {pr['observation']} |"
+                )
+        lines.extend([
+            "",
+            "A low last-step change is not independent material validation;",
+            "stress at a fixed point remains approximate and can be affected",
+            "by local mesh topology or nearby stress discontinuities.",
+        ])
     lines.extend([
         "",
         f"**Displacement observation:** {report['overall_displacement_observation']}. "
