@@ -51,6 +51,7 @@ def compare_element_studies(linear, quadratic):
             "C3D10_nodes":new["nodes"],
             "C3D4_fixed_coordinate_stress_trends":old.get("fixed_coordinate_stress_trends"),
             "C3D10_fixed_coordinate_stress_trends":new.get("fixed_coordinate_stress_trends"),
+            "C3D10_fixed_coordinate_affine_stress_trends":new.get("fixed_coordinate_affine_stress_trends"),
             "C3D4_stress_band_trends":old.get("stress_band_trends"),
             "C3D10_stress_band_trends":new.get("stress_band_trends"),
             "C3D4_load_stress_band_trends":old.get("load_stress_band_trends"),
@@ -182,6 +183,37 @@ def to_markdown(result):
             "The same model coordinate is used on every mesh. Element-average",
             "integration-point stress is an approximate field recovery and can",
             "remain mesh-sensitive near fused joints and load-bearing interfaces.",
+        ])
+    if any(r.get("C3D10_fixed_coordinate_affine_stress_trends") for r in result["cases"]):
+        lines.extend([
+            "",
+            "### C3D10 direct Gauss-XYZ tensor interpolation (same probe coordinates)",
+            "",
+            "Comparison against prior constant element-mean tensor recovery.",
+            "Uses actual *EL PRINT S,COORD pairs and rejects curved tetra geometry.",
+            "",
+            "| Case | XYZ stress probe | Element-mean Δσ | Gauss-affine Δσ | Current quality/stability |",
+            "|---|---|---:|---:|---|",
+        ])
+        for row in result["cases"]:
+            old={v["name"]:v for v in row.get("C3D10_fixed_coordinate_stress_trends") or []}
+            new=row.get("C3D10_fixed_coordinate_affine_stress_trends") or []
+            if not new or set(old)!={v["name"] for v in new}:
+                raise ValueError("Missing C3D10 matched probe recovery datasets")
+            for p in new:
+                before=old[p["name"]]
+                if before["coordinate_mm"]!=p["coordinate_mm"]:
+                    raise ValueError("C3D10 Gauss and mean recovery points differ")
+                lines.append(
+                    f"| {row['key']} | {p['name']} | "
+                    f"{before['last_change_pct']:.3f}% | "
+                    f"{p['last_change_pct']:.3f}% | "
+                    f"{p['observation']} |"
+                )
+        lines.extend([
+            "",
+            "This piecewise-affine method is not continuous across elements.",
+            "A stable sample is not independently validated stress accuracy.",
         ])
     lines.extend([
         "",
