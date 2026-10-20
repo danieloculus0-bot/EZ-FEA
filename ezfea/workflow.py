@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from .core import Analysis
 from .mesh import build_mesh
-from .solver import nodal_force_components, run_calculix, write_input
+from .solver import nodal_force_components, assemble_surface_loads, run_calculix, write_input
 from .results import summarize_dat
 from .stress_diagnostics import stress_distance_bands
 from .stress_probes import recover_fixed_stress
@@ -38,6 +38,12 @@ def run_case(case: Analysis, output_root="runs", *, fixed_stress_probes=None):
                         "connections":len(case.active_connections),
                         "load_regions":len(case.active_loads),
                         "loaded_areas_by_face_mm2":mesh.load_areas_by_face}
+        applied_nodal_forces,load_audit=assemble_surface_loads(case,mesh)
+        meta["load_introduction"]={
+            "schema":"ezfea.load_introduction.v1",
+            "distributions":load_audit,
+            "preserves_requested_total_force_and_discrete_resultant_moment":True,
+        }
         inp = write_input(case,mesh,out/"analysis.inp")
         meta.update(run_calculix(inp))
         metrics = summarize_dat(
@@ -45,8 +51,9 @@ def run_case(case: Analysis, output_root="runs", *, fixed_stress_probes=None):
             expected_nodes=len(mesh.nodes),
             expected_elements=len(mesh.elements),
             applied_force_scale_n=case.force_scale_n,
-            applied_nodal_forces_n=nodal_force_components(case, mesh),
+            applied_nodal_forces_n=applied_nodal_forces,
             element_type=mesh.element_type,
+            node_positions_mm=mesh.nodes,
         )
         # Optional diagnostic for a single planar fixed face: stress away
         # from the constrained plane in fixed *physical* distance bands.
@@ -63,7 +70,8 @@ def run_case(case: Analysis, output_root="runs", *, fixed_stress_probes=None):
         # A static solver can finish but still produce physically suspect results.
         # Do not advertise an unchecked load balance as validated.
         meta["status"] = (
-            "completed" if metrics["force_balance_check"] == "pass"
+            "completed" if (metrics["force_balance_check"] == "pass"
+                            and metrics["moment_balance_check"] == "pass")
             else "needs_review"
         )
     except Exception as exc:
