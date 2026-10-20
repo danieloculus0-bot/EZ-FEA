@@ -53,7 +53,7 @@ class PhysicalGaussInterpolationTests(unittest.TestCase):
         parsed=read_dat(self.setup_file(fake_native_dat()))
         self.assertEqual(len(parsed["stress"]),4)
         self.assertEqual(len(parsed["coordinates"]),4)
-        self.assertEqual(parsed["coordinates"][2][:2],[7,2])
+        self.assertEqual(parsed["coordinates"][1][:2],[7,2])
 
     def test_affine_tensor_recovered_exactly_at_fixed_xyz(self):
         xyz=(2.1,2.2,1.5)
