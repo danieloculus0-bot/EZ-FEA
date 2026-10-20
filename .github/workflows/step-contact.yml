@@ -1,0 +1,41 @@
+name: Separate-STEP-Solid Contact Experiment
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "ezfea/contact_step.py"
+      - "ezfea/native_pressure.py"
+      - "ezfea/mesh.py"
+      - ".github/workflows/step-contact.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  import-and-contact:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install native Gmsh and CalculiX
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y calculix-ccx libglu1-mesa
+          python -m pip install -r requirements.txt
+      - name: Build two separate STEP solids, mesh C3D10 and verify contact
+        run: |
+          python -m ezfea.contact_step --out step_contact_evidence --mesh 7
+          cat step_contact_evidence/STEP_CONTACT_REPORT.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload actual STEP, element face pairs and full native solver evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: EZ-FEA-separate-STEP-contact-experiment
+          path: step_contact_evidence/
+          if-no-files-found: warn
+          retention-days: 30
