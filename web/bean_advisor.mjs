@@ -102,7 +102,7 @@ export function reviewCad({filename="",fixed=null,load=null}={}) {
 }
 
 export function reviewFrameStudies(studies) {
-  if (!Array.isArray(studies) || studies.length!==3) throw new TypeError("Expected three recorded frame results.");
+  if (!Array.isArray(studies) || studies.length<3) throw new TypeError("Expected at least three recorded frame results.");
   for (const row of studies) {
     if (!row?.key || !finitePositive(row.max_displacement_mm) ||
         !finitePositive(row.max_von_mises_mpa) ||
@@ -116,4 +116,39 @@ export function reviewFrameStudies(studies) {
   if (!rectangle||!braced)throw new TypeError("Missing comparable frame specimens.");
   return {ratio:rectangle.max_displacement_mm/braced.max_displacement_mm,
     bracedStiffer:braced.max_displacement_mm < rectangle.max_displacement_mm};
+}
+
+
+export function reviewFrameSelection(study, studies=[]) {
+  if (!study || !Number.isFinite(study.max_displacement_mm) ||
+      !Number.isFinite(study.max_von_mises_mpa) ||
+      !Number.isFinite(study.force_balance_relative_error) ||
+      study.force_balance_relative_error > .01 ||
+      study.force_balance_relative_error < 0) {
+    return {headline:"Recorded analysis incomplete",
+      advice:"The selected study has insufficient validated solver metrics for BEAN to review.",
+      kind:"needs-input"};
+  }
+  const usage=(Number.isFinite(study.yield_mpa) && study.yield_mpa>0)
+    ? 100*study.max_von_mises_mpa/study.yield_mpa : null;
+  const direction=Math.abs(study.force_n?.[2]||0)>0?"downward":"lateral";
+  const stress=usage==null?"Nominal material yield was not supplied."
+    :"Peak integration-point stress is "+readable(usage)+
+    "% of nominal yield for this experimental linear-elastic study.";
+  let comparison="";
+  if(study.key==="03_braced_racking" || study.key==="02_rectangle_racking"){
+    try{
+      const check=reviewFrameStudies(studies);
+      comparison=" The matched braced frame had "+readable(check.ratio)+
+        "× less maximum displacement than the unbraced rectangle.";
+    }catch(_e){/* No comparison without matching valid evidence. */}
+  }
+  return {
+    headline:"BEAN reviewed the archived "+direction+" study",
+    advice:"Real CalculiX results: "+readable(study.max_displacement_mm,4)+
+      " mm maximum movement, "+readable(study.max_von_mises_mpa,4)+
+      " MPa peak von Mises. "+stress+comparison+
+      " Supports are idealized, and this is one mesh size—not proof of accuracy or a safety approval.",
+    kind:"reference"
+  };
 }
