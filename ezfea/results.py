@@ -10,7 +10,7 @@ import re
 from pathlib import Path
 
 _NUM = r"[-+]?(?:\d+\.?\d*|\.\d+)(?:[eEdD][-+]?\d+)?"
-_DISPLACEMENT = re.compile(r"^\s*displacements\s*\(vx,vy,vz\)\b?", re.I)
+_DISPLACEMENT = re.compile(r"^\s*displacements\s*\(vx,vy,vz\)", re.I)
 _STRESS = re.compile(r"^\s*stresses\s*\(elem,\s*integ\.pnt\.,\s*sxx,syy,szz,sxy,sxz,syz\)", re.I)
 _REACTION = re.compile(r"^\s*forces\s*\(fx,fy,fz\)\s*for set\b", re.I)
 
