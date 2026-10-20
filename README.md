@@ -45,6 +45,24 @@ To add another repeatable simulation, extend `STUDIES` in `ezfea/frame_benchmark
 
 The workflow may also be manually started by a repo maintainer in **Actions → Frame Specimen Physics Suite → Run workflow**. Anonymous GitHub Pages visitors **cannot** launch arbitrary user-uploaded 3D jobs, which would require an authenticated compute service. No tokens or privileged workflow endpoints are embedded in website HTML. See [web/README.md](web/README.md).
 
+## Six-frame automatic mesh-convergence experiment
+
+[**Real 3D Frame Mesh Convergence — GitHub Actions**](https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/frame-convergence.yml) runs **18 genuine Gmsh + CalculiX analyses**: all six repeatable frame load cases at **14, 10, and 7 mm** requested tetrahedral mesh sizes. Geometry, support faces, load vectors and nominal material are held constant within each three-grid series.
+
+- `ezfea/frame_convergence.py` reuses the tested `ezfea.convergence.run_refinement` engine rather than introducing another solver.
+- Each frame records STEP and input hashes, element/node counts, full CalculiX result files, force equilibrium, maximum displacement and peak integration-point von Mises stress on every grid.
+- `convergence_summary.json`, `convergence_summary.csv` and `CONVERGENCE_REPORT.md` record **adjacent mesh changes**. The final two changes must each be ≤ 5% for the label `stable_at_checked_mesh_sizes` in displacement. Peak stress gets its **own** 10% trend screening; it is never implicitly called converged merely because movement stabilized.
+- The Actions run page displays the human-readable report and provides the complete native solver files as a downloadable artifact. An unresolved result is **reported as needing further refinement**, not quietly declared successful.
+- This is **mesh-sensitivity/regression evidence, not verification against an independent physical or analytic truth, not validated safety**, especially near fully fixed corners and for bending with first-order C3D4 elements.
+
+With Gmsh and native `ccx` installed, run the same experiment locally:
+
+~~~sh
+python -m ezfea.frame_convergence --out runs/frame_convergence --meshes 14 10 7
+~~~
+
+The public GitHub Pages interface remains unchanged; these are traceable native experiments, not browser calculations.
+
 ## Windows installation
 
 Install Python 3.10+ and the free CalculiX CCX solver from https://www.calculix.de/. Put ccx.exe on PATH or point EZFEA_CCX at its full path.
