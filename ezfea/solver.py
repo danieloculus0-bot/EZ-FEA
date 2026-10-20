@@ -84,7 +84,12 @@ def write_input(case, mesh, target):
     lines = ["*HEADING", "EZ-FEA experimental linear static analysis N mm MPa", "*NODE"]
     lines.extend(f"{n}, {v[0]:.10g}, {v[1]:.10g}, {v[2]:.10g}"
                  for n, v in sorted(mesh.nodes.items()))
-    lines.append("*ELEMENT, TYPE=C3D4, ELSET=PART")
+    if mesh.element_type != case.element_type or mesh.element_type not in ("C3D4", "C3D10"):
+        raise ValueError("Meshed element type differs from requested CalculiX element type.")
+    expected_size=4 if mesh.element_type=="C3D4" else 10
+    if any(len(nodes)!=expected_size for nodes in mesh.elements.values()):
+        raise ValueError("Solid element connectivity has incorrect node count.")
+    lines.append(f"*ELEMENT, TYPE={mesh.element_type}, ELSET=PART")
     lines.extend(f"{n}, {', '.join(map(str, v))}" for n, v in sorted(mesh.elements.items()))
     lines.append("*NSET, NSET=CONNECTION")
     lines.extend(_rows(mesh.fixed_nodes))
