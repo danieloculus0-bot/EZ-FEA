@@ -85,6 +85,25 @@ The native stress-diagnostics module groups *actual CalculiX integration-point s
 
 Distances reflect tetrahedron **corner centroids**, not actual Gauss point positions. These are screening trends, not proof of a stress singularity or convergence. Follow-up validation requires load/joint modeling investigations, fixed-position stress comparisons, improved curved-surface quadrature and independent analytical or physical benchmarks. EZ-FEA remains **experimental and not for engineering sign-off**.
 
+
+### Fixed-coordinate stress probes — October 20, 2026
+
+The native solver can now evaluate **named physical XYZ probe locations** on each C3D4 or C3D10 mesh. The module `ezfea/stress_probes.py` finds the tetrahedron containing the specified XYZ point and reconstructs an element-local stress tensor from **actual CalculiX integration-point stresses**. The recovered tensor is the component-wise average across the host element's one (C3D4) or four (C3D10) integration points; von Mises is then computed from that tensor.
+
+This is a **piecewise-constant stress recovery at a fixed coordinate**, **not exact C3D10 interpolation at that coordinate**. It avoids moving the evaluation point to a different maximum-stress element as the mesh changes. Probe coordinates, recovered components, host element IDs, barycentric location margin, and near-element-boundary warnings are archived. Missing/outside/incomplete stress records fail rather than become zero values.
+
+[**Successful 36-solve physical-coordinate probe comparison**](https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/39503247718): four fixed locations per frame × six frames, all measured at 14, 10 and 7 mm for both element formulations. Although **all six C3D10 maximum displacements** had already met the mesh-stability criterion, the fixed-point stress diagnostic found:
+
+- **1 of 24** C3D10 probe series met the provisional two-step 10% stress-sensitivity criterion without placement warnings.
+- **17 of 24** were still sensitive to mesh changes under this element-mean recovery.
+- **6 of 24** had a near-element-boundary placement at one or more grids, so their convergence status is withheld.
+
+For example, the C3D10 braced lateral top-member probe changed just **1.78%** from 10 to 7 mm, while the same top-member probe under braced vertical loading changed **78.60%**. These are numerical sensitivity observations, **not true pointwise stress convergence**, and the coarse recovery itself can be responsible for a substantial part of the variation.
+
+This exposes the next solver-quality task: **recover C3D10 stress at fixed material points using verified integration-point interpolation**, then benchmark those values on analytical beam problems and mesh-refined frames. Do not interpret the current probes or global peaks as certified strength/factor-of-safety checks.
+
+You can also pass a mapping of named coordinates to `run_case(case, ..., fixed_stress_probes={"midspan": (x,y,z)})` for a single native solve. Coordinates are **millimeters in the STEP model frame**, and presently require a straight-sided tetrahedral geometry for accurate point localization.
+
 ## Six-frame automatic mesh-convergence experiment
 
 [**Real 3D Frame Mesh Convergence — GitHub Actions**](https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/frame-convergence.yml) runs **18 genuine Gmsh + CalculiX analyses**: all six repeatable frame load cases at **14, 10, and 7 mm** requested tetrahedral mesh sizes. Geometry, support faces, load vectors and nominal material are held constant within each three-grid series.
