@@ -4,6 +4,38 @@ Simple STEP-to-structural-FEA desktop app powered by the free **Gmsh** mesher an
 
 **v0.1 EXPERIMENTAL. Not validated for professional engineering sign-off.**
 
+## Live browser demo
+
+**[Open EZ-FEA on GitHub Pages](https://danieloculus0-bot.github.io/EZ-FEA/)** — dark-green four-step workbench, real 2D eight-element cantilever FE example, and 3D STEP/STL/OBJ **preview only** for uploads.
+
+BEAN's official green sprout mascot now appears as a gently animated engineering advisor. The browser BEAN panel uses deterministic, testable checks based on actual beam numerical output to explain bending stress vs nominal material yield, tip movement, agreement with the independent analytical cantilever reference, and model limitations. On imported CAD previews, it explains whether fixture and load marks are complete and why those marks are **not** physical restraints. Motion honors `prefers-reduced-motion`.
+
+The browser BEAN panel also exposes **three genuine, previously calculated 3D frame studies** with displacement and stress metrics from a recorded native Gmsh/CalculiX GitHub Actions solve. This is a **static, provenance-linked result set**, not a fresh cloud solve, not a direct browser connection to the 3D solver, and not an autonomous BEAN Core model or safety approval. See [Browser Lab details](web/README.md).
+
+## Repeatable frame physics specimens
+
+The native Python engine now includes `ezfea/frame_benchmarks.py`: three parametric STEP test pieces with identical overall dimensions (240 × 180 × 20 mm), solid 20 mm members, nominal A36 steel, explicit supports/loads, and recorded case metadata:
+
+- **Open portal**: 250 N vertical loading.
+- **Closed rectangular frame**: 250 N horizontal racking.
+- **Diagonally braced frame**: same 250 N horizontal racking, for a controlled comparison.
+
+These are single continuous Boolean-fused solids representing idealized perfectly connected members, **not multi-component welded/bolted/contact assemblies**. Each is meshed and solved in CalculiX with equilibrium checks and saved STEP/inputs/FRD/DAT/log/JSON records. The dedicated [Frame Specimen Physics Suite](https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/frame-physics.yml) runs the real solver and archives artifacts, and it tests that the braced example reduces racking deflection relative to the unbraced frame. One mesh size does not prove convergence or engineering accuracy.
+
+Generate model files without the solver:
+
+~~~sh
+python -m ezfea.frame_benchmarks --out frame_benchmark_artifacts --generate-only
+~~~
+
+With Gmsh Python API and the external `ccx` solver installed, run all three cases:
+
+~~~sh
+python -m ezfea.frame_benchmarks --out frame_benchmark_artifacts --mesh-mm 14
+~~~
+
+The latest browser-bundled reference results originate from [this successful recorded solver run](https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/39488256233). The solver evidence is intentionally kept separate from BEAN's advisory remarks; BEAN does not calculate or fabricate stress.
+
 ## Windows installation
 
 Install Python 3.10+ and the free CalculiX CCX solver from https://www.calculix.de/. Put ccx.exe on PATH or point EZFEA_CCX at its full path.
