@@ -41,7 +41,7 @@ class StressLocalizationTests(unittest.TestCase):
 
     def test_nonplanar_fixture_not_misrepresented(self):
         mesh=fixture()
-        mesh.fixed_nodes=[1,2,4]
+        mesh.fixed_nodes=[1,2,3,4]
         self.assertIsNone(fixture_plane(mesh))
         with tempfile.TemporaryDirectory() as d:
             file=Path(d)/"analysis.dat"
