@@ -1,0 +1,51 @@
+name: Native Analytical Stress Benchmark
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "ezfea/analytic_benchmarks.py"
+      - "ezfea/stress_interpolation.py"
+      - "ezfea/stress_probes.py"
+      - "ezfea/results.py"
+      - "ezfea/solver.py"
+      - "ezfea/workflow.py"
+      - "ezfea/convergence.py"
+      - "tests/test_stress_interpolation.py"
+      - "tests/test_analytic_benchmarks.py"
+      - ".github/workflows/analytic-stress-benchmark.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  actual-numerical-reference:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Gmsh and CalculiX for real 3D solves
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y calculix-ccx libglu1-mesa
+          python -m pip install -r requirements.txt
+      - name: Check coordinate pairing and analytical calculations
+        run: |
+          python -m unittest discover -s tests -p test_stress_interpolation.py -v
+          python -m unittest discover -s tests -p test_analytic_benchmarks.py -v
+      - name: Solve real axial bar with two element types and three grids
+        run: |
+          python -m ezfea.analytic_benchmarks --out axial_analytic_evidence --meshes 14 10 7
+          cat axial_analytic_evidence/ANALYTICAL_REPORT.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Archive raw CAD, CalculiX output and independent formulas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: EZ-FEA-native-axial-reference-evidence
+          path: axial_analytic_evidence/
+          retention-days: 30
+          if-no-files-found: warn
