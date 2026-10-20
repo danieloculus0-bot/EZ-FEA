@@ -29,7 +29,7 @@ class NativeResultsPublishingTests(unittest.TestCase):
                 "identity_sha256": identity,
                 "geometry": asdict(spec),
                 "mesh_size_mm": 14,
-                "material": {"name": "nominal steel", "elastic_modulus_mpa": 200000},
+                "material": {"name": "nominal steel", "elastic_modulus_mpa": 200000, "yield_mpa": 250},
                 "loads": [{"face": 1, "force_n": list(spec.load_n)}],
                 "supports": [{"face": 2, "axes": [1,2,3]}],
             })
