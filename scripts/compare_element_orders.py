@@ -49,6 +49,10 @@ def compare_element_studies(linear, quadratic):
             "C3D10_tetrahedra":new["elements"],
             "C3D4_nodes":old["nodes"],
             "C3D10_nodes":new["nodes"],
+            "C3D4_stress_band_trends":old.get("stress_band_trends"),
+            "C3D10_stress_band_trends":new.get("stress_band_trends"),
+            "C3D4_peak_host_distance_mm":old.get("peak_host_tet_centroid_distance_mm"),
+            "C3D10_peak_host_distance_mm":new.get("peak_host_tet_centroid_distance_mm"),
             "fine_displacement_step_improved":(
                 new["fine_displacement_delta_pct"] < old["fine_displacement_delta_pct"]
             ),
@@ -78,6 +82,38 @@ def to_markdown(result):
             f"{r['C3D10_fine_displacement_change_pct']:.3f}% | "
             f"{'Yes' if r['fine_displacement_step_improved'] else 'No'} |"
         )
+    if any(row.get("C3D10_stress_band_trends") for row in result["cases"]):
+        lines.extend([
+            "",
+            "### Stress location: global peak vs away from fixed supports",
+            "",
+            "Each value is a mesh-step change in actual integration-point stress.",
+            "The support distance is based on the host tetrahedron corner centroid,",
+            "not the exact Gauss point. These are physical, fixed-distance regions.",
+            "",
+            "| Case | C3D10 peak centroid distance at fine grid | Global Δ peak stress | ≥20mm Δ peak stress | ≥40mm Δ peak stress |",
+            "|---|---:|---:|---:|---:|",
+        ])
+        for row in result["cases"]:
+            bands=row.get("C3D10_stress_band_trends") or []
+            by_dist={b["min_distance_mm"]:b for b in bands}
+            def cell(distance):
+                item=by_dist.get(distance,{})
+                return (f"{item['last_change_pct']:.3f}%"
+                        if "last_change_pct" in item else "n/a")
+            positions=row.get("C3D10_peak_host_distance_mm") or []
+            peak_position=(f"{positions[-1]:.3f} mm" if positions else "n/a")
+            lines.append(
+                f"| {row['key']} | {peak_position} | "
+                f"{row['C3D10_fine_peak_stress_change_pct']:.3f}% | "
+                f"{cell(20.)} | {cell(40.)} |"
+            )
+        lines.extend([
+            "",
+            "Peaks outside the fixture bands are diagnostic only. A smaller change",
+            "away from the support suggests spatial localization of sensitivity;",
+            "it does not prove a stress singularity or validate the load model.",
+        ])
     lines.extend([
         "",
         "**Interpretation:** Element orders are distinct physics discretizations;",
