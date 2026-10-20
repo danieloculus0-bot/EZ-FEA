@@ -1,6 +1,6 @@
 import {
   JOINT_TYPES,SCHEMA,validateMatrix,sampleMatrix,setJointType,
-  fillDown,pasteColumn,toCSV
+  fillDown,pasteColumn,toCSV,groundMatrix
 } from "./joint_matrix_core.mjs";
 
 const el=id=>document.getElementById(id);
@@ -105,7 +105,15 @@ function render() {
   const selected=matrix.rows.filter(x=>x.joint_type!=="Unassigned").length;
   el("classified").textContent=String(selected);
   el("remaining").textContent=String(matrix.rows.length-selected);
-  el("ground").textContent=String(matrix.ground_component??"—");
+  const chooser=el("ground-select");
+  chooser.replaceChildren();
+  (matrix.components??[]).forEach(c=>{
+    const option=document.createElement("option");
+    option.value=String(c.id);
+    option.textContent=String(c.label??("Part "+c.id))+(c.reachable_from_ground===false?" (disconnected)":"");
+    chooser.append(option);
+  });
+  chooser.value=String(matrix.ground_component);
   el("undo").disabled=undoStack.length===0;
   el("redo").disabled=redoStack.length===0;
   el("fill").disabled=matrix.rows.length<2;
@@ -210,6 +218,11 @@ el("file").addEventListener("change",async ev=>{
     commit(imported,"Imported "+imported.rows.length+" candidate CAD joints for review.");
   }catch(err){message(err.message,true);}
   ev.target.value="";
+});
+el("ground-select").addEventListener("change",event=>{
+  try{commit(groundMatrix(matrix,Number(event.target.value)),
+             "Ground component changed. Joint physics remains unassigned.");}
+  catch(err){message(err.message,true);render();}
 });
 el("fill").addEventListener("click",fillSelected);
 el("copy").addEventListener("click",copySelected);
