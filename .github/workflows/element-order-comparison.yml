@@ -46,7 +46,7 @@ jobs:
       - name: C3D4 control runs (6 frames x 3 grids)
         run: |
           python -m ezfea.frame_convergence --out element_order_studies/C3D4 \
-            --element-type C3D4 --meshes 14 10 7 \
+            --element-type C3D4 --meshes 14 10 7
       - name: Genuine C3D10 solves (same 6 frames x 3 grids)
         run: |
           python -m ezfea.frame_convergence --out element_order_studies/C3D10 \
