@@ -1,0 +1,62 @@
+name: Real 3D Frame Mesh Convergence
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "ezfea/frame_convergence.py"
+      - "ezfea/convergence.py"
+      - "ezfea/frame_benchmarks.py"
+      - "ezfea/mesh.py"
+      - "ezfea/solver.py"
+      - "ezfea/results.py"
+      - "ezfea/workflow.py"
+      - "tests/test_frame_convergence.py"
+      - ".github/workflows/frame-convergence.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frame-convergence-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  real-convergence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install actual CalculiX solver and Gmsh
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y calculix-ccx libglu1-mesa
+          python -m pip install -r requirements.txt
+      - name: Verify convergence and frame definitions
+        run: |
+          python -m unittest discover -s tests -p test_frame_specimens.py -v
+          python -m unittest discover -s tests -p test_convergence.py -v
+          python -m unittest discover -s tests -p test_frame_convergence.py -v
+      - name: Solve 6 frames at 14, 10 and 7 mm (18 real FEA jobs)
+        run: |
+          python -m ezfea.frame_convergence --out frame_convergence_artifacts --meshes 14 10 7
+      - name: Display numerical trends in Actions run summary
+        if: always()
+        run: |
+          if test -f frame_convergence_artifacts/CONVERGENCE_REPORT.md; then
+            cat frame_convergence_artifacts/CONVERGENCE_REPORT.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Convergence suite did not complete. Review the solver error; no stability claims." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Archive all CAD, inputs, solver logs, native fields and trends
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: EZ-FEA-18-native-frame-convergence-runs
+          path: frame_convergence_artifacts/
+          if-no-files-found: warn
+          retention-days: 30
