@@ -96,6 +96,68 @@ export class Viewer {
     this.bounds=new THREE.Box3().setFromObject(this.geometryGroup);
     this.focus();
   }
+  showFrameStudy(study) {
+    // Read-only geometry of a solver-verified frame specimen.
+    // No calculated deformation or stress-field contour is inferred here.
+    const dims=study?.model_dimensions_mm;
+    if (!dims || !["width","height","depth","member","brace"].every(
+      key=>Number.isFinite(dims[key]) && dims[key]>0
+    ) || !["portal","rectangle","braced"].includes(study.construction)) {
+      throw new Error("Frame study geometry is incomplete.");
+    }
+    this.demo=true;
+    this.pickMode=null;
+    this.clearGroup(this.geometryGroup);
+    this.clearGroup(this.markerGroup);
+    this.clearGroup(this.overlayGroup);
+    const {width:w,height:h,depth:d,member:t,brace:b}=dims;
+    const steel=new THREE.MeshStandardMaterial({
+      color:0x91b3aa,metalness:.6,roughness:.37
+    });
+    const edges=new THREE.LineBasicMaterial({color:0xc5ff4a,transparent:true,opacity:.22});
+    const box=(sx,sy,sz,cx,cy,cz)=>{
+      const geom=new THREE.BoxGeometry(sx,sy,sz);
+      const mesh=new THREE.Mesh(geom,steel);
+      mesh.position.set(cx,cy,cz);
+      this.geometryGroup.add(mesh);
+      const wire=new THREE.LineSegments(new THREE.EdgesGeometry(geom),edges);
+      wire.position.copy(mesh.position);
+      this.geometryGroup.add(wire);
+      return mesh;
+    };
+    // The Python CAD fixture is built in X/Z. This browser schematic shows
+    // the same X/height profile upright for easier inspection.
+    box(t,h,d,t/2,h/2,0);
+    box(t,h,d,w-t/2,h/2,0);
+    box(w-2*t,t,d,w/2,h-t/2,0);
+    if(study.construction!=="portal")box(w-2*t,t,d,w/2,t/2,0);
+    if(study.construction==="braced"){
+      const lower=new THREE.Vector3(t,t,0);
+      const upper=new THREE.Vector3(w-t,h-t,0);
+      const direction=upper.clone().sub(lower);
+      const diagonal=new THREE.Mesh(new THREE.BoxGeometry(direction.length(),b,d),steel);
+      diagonal.quaternion.setFromUnitVectors(
+        new THREE.Vector3(1,0,0),direction.clone().normalize()
+      );
+      diagonal.position.copy(lower.add(upper).multiplyScalar(.5));
+      this.geometryGroup.add(diagonal);
+    }
+    const footingMat=new THREE.MeshBasicMaterial({color:0x5ff39a});
+    for(const x of [t/2,w-t/2]){
+      const foot=new THREE.Mesh(new THREE.BoxGeometry(t*1.3,t*.18,d*1.3),footingMat);
+      foot.position.set(x,-t*.1,0);
+      this.geometryGroup.add(foot);
+    }
+    const vertical=Math.abs(study.force_n?.[2]||0)>0;
+    const arrow=new THREE.ArrowHelper(
+      vertical ? new THREE.Vector3(0,-1,0) : new THREE.Vector3(1,0,0),
+      new THREE.Vector3(vertical?w/2:w*.69,h+t*1.4,0),
+      Math.max(h*.16,20),0xc5ff4a,Math.max(t*.5,7),Math.max(t*.3,4)
+    );
+    this.geometryGroup.add(arrow);
+    this.bounds=new THREE.Box3().setFromObject(this.geometryGroup);
+    this.focus();
+  }
   showStl(buffer) {
     const geometry=new STLLoader().parse(buffer);
     geometry.computeVertexNormals();
