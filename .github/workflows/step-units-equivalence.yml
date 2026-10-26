@@ -1,0 +1,40 @@
+name: Native STEP Inch and Millimeter Equivalence
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "ezfea/step_unit_benchmark.py"
+      - "ezfea/mesh.py"
+      - "ezfea/workflow.py"
+      - "ezfea/results.py"
+      - ".github/workflows/step-units-equivalence.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  native-equivalence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install real CAD and solver dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y calculix-ccx libglu1-mesa
+          python -m pip install -r requirements.txt
+      - name: Verify actual STEP unit translation and native structural results
+        run: python -m ezfea.step_unit_benchmark --out step_unit_evidence
+      - name: Archive source STEP, imported dimensions and raw solver evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: EZ-FEA-in-mm-STEP-native-comparison
+          path: step_unit_evidence/
+          retention-days: 30
+          if-no-files-found: warn
