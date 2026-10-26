@@ -54,6 +54,9 @@ def run_case(case: Analysis, output_root="runs", *, fixed_stress_probes=None):
             applied_nodal_forces_n=applied_nodal_forces,
             element_type=mesh.element_type,
             node_positions_mm=mesh.nodes,
+            expected_node_ids=mesh.nodes.keys(),
+            expected_element_ids=mesh.elements.keys(),
+            expected_reaction_node_ids=mesh.fixed_nodes,
         )
         # Optional diagnostic for a single planar fixed face: stress away
         # from the constrained plane in fixed *physical* distance bands.
