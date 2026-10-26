@@ -29,6 +29,10 @@ The system must support *connection graphs*, not assume every assembly is one si
 
 The preview begins with clearly labeled **sample joints**; it can also import the actual `joint_matrix.json` or `mate_graph.json` produced by the native STEP mate scanner. It does **not** perform a structural solve when you change a dropdown. The main browser demo is intentionally not rebuilt for each engineering milestone.
 
+## First reviewed assembly solver connection (October 26, 2026)
+
+**[Joint Matrix → reviewed face pair → real CalculiX contact](docs/REVIEWED_ASSEMBLY_CONTACT.md)** is now implemented for a constrained two-part STEP model. The source STEP hash, two component IDs, separate CAD faces, explicit `Contact only` choice and separately selected `experimental_separable_contact` physics are checked before the native contact backend will run. It then solves compression, separation and no-contact controls. **This is not a generalized assembly solver**, and choosing only a type in the browser does not trigger calculations. [End-to-end native test workflow](https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/reviewed-assembly-contact.yml).
+
 ## Current build and verification
 
 **Development snapshot:** October 20, 2026 · **Status:** experimental research/beta, **not** a certified engineering analysis product.
@@ -46,7 +50,7 @@ The preview begins with clearly labeled **sample joints**; it can also import th
 - **Native force introduction:** choose an entire-face distributed load or a positionable Gaussian traction footprint with specified total XYZ force, center XYZ and spread (mm). Real T3/T6 surface quadrature produces equivalent FE nodal loads and reports the actual resultant force, eccentric moment and reaction balance. This approximates a pressure pad; it does **not** simulate nonlinear physical contact.
 - **True native normal pressure (experimental backend):** CalculiX `*DSLOAD P` applied to real tetrahedral exterior faces, independently checked against pressure-integrated total force and support reaction moments. The [four-solve native benchmark](https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/39508482477) passed for C3D4 and C3D10.
 - **Real separable contact proofs:** a controlled two-brick C3D8 test transferred **962.7 N** through CalculiX frictionless contact under compression and no meaningful load during separation. A later constrained two-part STEP/C3D10 experiment also retained **zero shared nodes** and transferred compression through its detected CAD interface. These are verified prototypes, **not** a generalized assembly/contact solver. [Pressure/contact evidence](docs/PRESSURE_CONTACT.md) · [STEP experiment](https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/39509089816).
-- **Grounded STEP assembly mate graph + Joint Matrix prototype:** auto-detect candidate opposing planar CAD mates, preserve part/face IDs and reachability from a grounded component, and review joints in an Excel-like dropdown / drag-to-fill grid. Geometry never guesses welded/bolted/pinned physics. [Joint Matrix instructions](docs/JOINT_MATRIX.md) · [standalone spreadsheet preview](https://danieloculus0-bot.github.io/EZ-FEA/joint-matrix.html).
+- **Grounded STEP assembly mate graph + Joint Matrix prototype:** auto-detect candidate opposing planar CAD mates, preserve part/face IDs and reachability from a grounded component, and review joints in an Excel-like dropdown / drag-to-fill grid. Geometry never guesses welded/bolted/pinned physics. The new controlled **reviewed Contact only** connector maps a separately selected experimental physics model into real two-body contact. [Joint Matrix instructions](docs/JOINT_MATRIX.md) · [contact bridge](docs/REVIEWED_ASSEMBLY_CONTACT.md).
 - Six native frame specimens and repeatable multi-grid mesh refinement; C3D4/C3D10 element-order studies have independent CI.
 - [Browser demo](https://danieloculus0-bot.github.io/EZ-FEA/) performs simplified beam physics and displays archived native results. Arbitrary uploaded CAD is **preview only**.
 
@@ -84,7 +88,7 @@ These measurements support a limited experimental solver regression baseline, **
 
 - Not validated for engineering sign-off. Mesh stability is not physical accuracy, and idealized fixed-edge stresses may diverge.
 - The generic `Analysis` API is still single-solid. The two controlled contact prototypes do **not** establish arbitrary STEP assembly solving, welds, fasteners, pins, bearings, joint friction or actuator mechanics.
-- Current geometric detection is limited to planar bounding-box candidates; a detected mate is **not** a confirmed mechanical connection. Changing a Joint Matrix type does not yet create solver constraints.
+- Current geometric detection is limited to planar bounding-box candidates; a detected mate is **not** a confirmed mechanical connection. Changing only a Joint Matrix type never creates solver constraints; a separately confirmed and checked contact-only model can execute the narrow experimental bridge.
 - Independent verification of general load cases, realistic joint behavior, curved geometry and contact-pressure convergence remains incomplete.
 - Native solver CI success and the browser's educational beam result are different verification scopes.
 
