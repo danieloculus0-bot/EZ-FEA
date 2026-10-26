@@ -86,6 +86,9 @@ These measurements support a limited experimental solver regression baseline, **
 
 ## Development roadmap
 
+**[Production-readiness targets and evidence requirements](docs/PRODUCTION_READINESS.md)** define the first realistic supported release, its current gaps, and the next native verification work. This does not hold experimental features off `main`.
+
+
 1. **Expand candidate mate detection:** compute actual planar face overlap (not only bounding boxes), recognize concentric cylindrical surfaces and pin/bearing axes, detect matched fastener-hole groups, evaluate clearances and provide geometry-grounded confidence and evidence. Preserve stable identities across assembly reimports.
 2. **Finish the engineering Joint Matrix:** robust large-assembly range fill, paste, filtering, row grouping and Excel-compatible round-trip; columns for joint dimensions and engineering assumptions (weld size, bolt pattern/preload, bearing clearance, friction). BEAN may suggest and explain classifications, but confirmation and provenance remain explicit.
 3. **Connect confirmed joints to native physics:** first validate bonded/tied interfaces and frictionless separable contacts on independent STEP solids, then pins/bearings and simplified bolt groups. Verify DOFs, load transfer, reaction force/moment balance, separation and convergence separately for each connector family. Do not silently convert every selected *Welded* label into a rigid tie.
