@@ -10,6 +10,7 @@ import argparse
 from collections import defaultdict, deque
 import json
 import math
+import hashlib
 from pathlib import Path
 
 SCHEMA="ezfea.assembly_joint_graph.v1"
@@ -157,6 +158,7 @@ def inspect_step_mates(path,*,ground_component=None,tolerance_mm=.001):
     try:
         gmsh.option.setNumber("General.Terminal",0)
         gmsh.model.add("EZ-FEA-mate-scanner")
+        gmsh.option.setString("Geometry.OCCTargetUnit","MM")
         gmsh.model.occ.importShapes(str(path))
         gmsh.model.occ.synchronize()
         bodies=sorted(tag for dim,tag in gmsh.model.getEntities(3) if dim==3)
@@ -185,6 +187,7 @@ def inspect_step_mates(path,*,ground_component=None,tolerance_mm=.001):
             ground_component if ground_component is not None else bodies[0],
             tolerance_mm=tolerance_mm)
         report["source_step"]=str(path)
+        report["source_sha256"]=hashlib.sha256(path.read_bytes()).hexdigest()
         report["face_count_scanned"]=len(faces)
         return report
     finally:
