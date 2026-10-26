@@ -16,6 +16,8 @@ from .demo import make_demo_step
 from .mesh import inspect_step
 from .workflow import run_case
 from .probe_convergence import screen_fixed_probe_stress
+from .mechanics_references import (isotropic_shear_modulus_mpa,
+                                   rectangular_beam_shear_tau_mpa)
 
 
 def rectangular_second_moment_mm4(b_mm,h_mm):
@@ -55,10 +57,14 @@ def run_bending_reference(output_root="runs/bending_reference", *,
     poisson=Material().poisson_ratio
     I=rectangular_second_moment_mm4(width,height)
     reference=cantilever_bending_displacement_mm(force,length,modulus,I)
-    G=modulus/(2*(1+poisson))
+    G=isotropic_shear_modulus_mpa(modulus,poisson)
     shear=force*length/((5./6.)*G*(width*height))
     probe_xyz=(51.1,8.3,4.3)
-    probe={"outer_fiber_at_midspan":probe_xyz}
+    shear_probe_xyz=(50.91,4.83,5.17)
+    probe={"outer_fiber_at_midspan":probe_xyz,
+           "midspan_neutral_axis_shear":shear_probe_xyz}
+    reference_tau=abs(rectangular_beam_shear_tau_mpa(
+        force,width,height,shear_probe_xyz[1]-height/2))
     sigma=abs(cantilever_bending_stress_mpa(
         force,length,probe_xyz[0],probe_xyz[1]-height/2,I))
     rows=[]
@@ -78,6 +84,7 @@ def run_bending_reference(output_root="runs/bending_reference", *,
                           else "fixed_coordinate_stress")
             measured=metrics[recovery_key]["probes"]["outer_fiber_at_midspan"]
             axial_sigma=abs(measured["tensor_mpa"][0])
+            shear_measured=abs(metrics[recovery_key]["probes"]["midspan_neutral_axis_shear"]["tensor_mpa"][3])
             probe_series[element_type].append({
                 "mesh_size_mm":mesh,
                 "element_count":record["mesh"]["elements"],
@@ -93,6 +100,9 @@ def run_bending_reference(output_root="runs/bending_reference", *,
                 "relative_tip_displacement_error_against_EB":abs(actual_disp-reference)/reference,
                 "analytical_outer_fiber_abs_sigma_x_mpa":sigma,
                 "actual_fixed_probe_abs_sigma_x_mpa":axial_sigma,
+                "analytical_midspan_abs_tau_xy_mpa":reference_tau,
+                "actual_fixed_probe_abs_tau_xy_mpa":shear_measured,
+                "relative_nominal_shear_error":abs(shear_measured-reference_tau)/reference_tau,
                 "relative_outer_fiber_stress_error":abs(axial_sigma-sigma)/sigma,
                 "native_force_balance_relative_error":metrics["force_balance_relative_error"],
                 "probe_coordinate_mm":list(probe_xyz),
@@ -110,6 +120,7 @@ def run_bending_reference(output_root="runs/bending_reference", *,
             "I_mm4":I,"youngs_modulus_mpa":modulus,
             "poisson_ratio":poisson,"force_n":force,
             "probe":probe,"rows":rows,
+            "reference_neutral_axis_shear_mpa":reference_tau,
             "fixed_probe_stress_convergence":stress_screens,
             "engineering_validation":"not_established"}
     (root/"bending_analytical_comparison.json").write_text(json.dumps(report,indent=2)+"\n",encoding="utf-8")
@@ -122,6 +133,12 @@ def run_bending_reference(output_root="runs/bending_reference", *,
                      f"{r['relative_tip_displacement_error_against_EB']*100:.3g}% | "
                      f"{r['actual_fixed_probe_abs_sigma_x_mpa']:.6g} | "
                      f"{sigma:.6g} | {r['relative_outer_fiber_stress_error']*100:.3g}% |")
+    lines+=["", "Native shear stress at fixed neutral-axis-adjacent location versus textbook rectangular section:"]
+    for r in rows:
+        lines.append(f"- {r['element_type']}, {r['mesh_size_mm']:g} mm: "
+                     f"|tau_xy| = {r['actual_fixed_probe_abs_tau_xy_mpa']:.5g} MPa; "
+                     f"reference = {reference_tau:.5g} MPa; "
+                     f"approximate discrepancy = {100*r['relative_nominal_shear_error']:.3g}%.")
     lines+=["", "Fixed physical-coordinate stress convergence screening (not validation):"]
     for etype,screen in stress_screens.items():
         lines.append(f"- {etype}: " + (
