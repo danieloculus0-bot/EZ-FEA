@@ -156,6 +156,13 @@ def write_input(case, mesh, target):
         if rank != 6:
             raise ValueError(f"Underconstrained setup: only {rank}/6 rigid-body modes restrained. "
                              "Add physically justified connections; do not invent clamps.")
+    else:
+        # Legacy single-face models need the same rigid-body verification.
+        # A zero-area/collinear fixture must not silently reach CalculiX.
+        rank = _rigid_body_rank(mesh.nodes, [(mesh.fixed_nodes, (1, 2, 3))])
+        if rank != 6:
+            raise ValueError(f"Underconstrained legacy fixture: only {rank}/6 rigid-body "
+                             "modes restrained. Reinspect the fixed face.")
     lines.append("*NSET, NSET=ALL_NODES")
     lines.extend(_rows(sorted(mesh.nodes)))
     lines.extend(["*MATERIAL, NAME=MAT", "*ELASTIC",
