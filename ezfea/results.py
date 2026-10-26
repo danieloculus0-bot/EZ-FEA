@@ -100,7 +100,8 @@ def max_displacement_mm(dat_file: Path):
 def summarize_dat(dat_file: Path, applied_force_n, yield_mpa, *, expected_nodes=None,
                   expected_elements=None, applied_force_scale_n=None,
                   applied_nodal_forces_n=None, element_type="C3D4",
-                  node_positions_mm=None):
+                  node_positions_mm=None, expected_node_ids=None,
+                  expected_element_ids=None, expected_reaction_node_ids=None):
     """Provenance-aware, deliberately limited static analysis summary.
 
     A computed ratio against a nominal yield is not a validated safety claim.
@@ -120,10 +121,32 @@ def summarize_dat(dat_file: Path, applied_force_n, yield_mpa, *, expected_nodes=
         raise ValueError("Displacement output does not cover every mesh node.")
     if expected_elements is not None and len(set(int(row[0]) for row in stress)) != expected_elements:
         raise ValueError("Stress output does not cover every mesh element.")
+    # A count alone is not enough: output for the wrong node/element IDs can
+    # otherwise look complete and produce physically unrelated peak results.
+    displacement_ids = [int(row[0]) for row in nodes]
+    reaction_ids = [int(row[0]) for row in reactions]
+    stress_keys = [(int(row[0]), int(row[1])) for row in stress]
+    if len(displacement_ids) != len(set(displacement_ids)):
+        raise ValueError("Displacement output contains duplicate node records.")
+    if len(reaction_ids) != len(set(reaction_ids)):
+        raise ValueError("Reaction output contains duplicate node records.")
+    if len(stress_keys) != len(set(stress_keys)):
+        raise ValueError("Stress output contains duplicate element/integration-point records.")
+    for label, actual, required in (
+        ("Displacement node", set(displacement_ids), expected_node_ids),
+        ("Stress element", {element for element, _ in stress_keys}, expected_element_ids),
+        ("Reaction node", set(reaction_ids), expected_reaction_node_ids),
+    ):
+        if required is not None and actual != set(required):
+            raise ValueError(f"{label} IDs do not match the solved mesh; missing "
+                             f"{len(set(required) - actual)}, unexpected "
+                             f"{len(actual - set(required))}.")
     peak_u = max(nodes, key=lambda row:math.sqrt(sum(x*x for x in row[1:])))
     peak_s = max(stress, key=lambda row:von_mises_mpa(*row[2:]))
     u_mm = math.sqrt(sum(x*x for x in peak_u[1:]))
     vm_mpa = von_mises_mpa(*peak_s[2:])
+    if not math.isfinite(u_mm) or not math.isfinite(vm_mpa):
+        raise ValueError("Nonfinite derived displacement or stress; results require review.")
     # CalculiX printed RF also includes direct applied nodal loads at reported
     # connection nodes. Deduct those inputs to recover support reaction forces.
     raw_reaction = [sum(row[index] for row in reactions) for index in (1,2,3)]
