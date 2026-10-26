@@ -1,0 +1,65 @@
+name: Reviewed Joint Matrix to Native STEP Contact
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "ezfea/assembly_physics.py"
+      - "ezfea/assembly_mates.py"
+      - "ezfea/joint_matrix.py"
+      - "ezfea/contact_step.py"
+      - "tests/test_assembly_physics.py"
+      - ".github/workflows/reviewed-assembly-contact.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  physical-contact:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install native Gmsh and CalculiX
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y calculix-ccx libglu1-mesa
+          python -m pip install -r requirements.txt
+      - name: Test fail-closed review and STEP provenance rules
+        run: python -m unittest discover -s tests -p test_assembly_physics.py -v
+      - name: Generate true two-part STEP and explicit test-harness reviewed contact matrix
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from ezfea.contact_step import make_two_body_step
+          from ezfea.assembly_mates import inspect_step_mates
+          from ezfea.joint_matrix import matrix_from_graph, paste_column
+          root=Path("reviewed_assembly_evidence")
+          root.mkdir(parents=True,exist_ok=True)
+          cad=make_two_body_step(root/"two_parts.step")
+          graph=inspect_step_mates(cad)
+          matrix=matrix_from_graph(graph)
+          assert len(matrix["rows"])==1
+          # This simulates an explicit user confirmation for the fixture,
+          # not an automatic inference or independently reviewed real job.
+          matrix=paste_column(matrix,"joint_type",0,"Contact only")
+          matrix=paste_column(matrix,"mechanical_model",0,"experimental_separable_contact")
+          (root/"reviewed_matrix.json").write_text(json.dumps(matrix,indent=2)+"\n")
+          PY
+      - name: Solve native compression, disconnected control and opening from reviewed pair
+        run: |
+          python -m ezfea.assembly_physics reviewed_assembly_evidence/two_parts.step reviewed_assembly_evidence/reviewed_matrix.json --out reviewed_assembly_evidence/native --mesh 7
+          cat reviewed_assembly_evidence/native/STEP_CONTACT_REPORT.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Archive STEP, edited Joint Matrix, native input decks and force evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: EZ-FEA-reviewed-assembly-C3D10-contact
+          path: reviewed_assembly_evidence/
+          retention-days: 30
+          if-no-files-found: warn
