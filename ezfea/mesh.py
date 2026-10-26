@@ -2,7 +2,9 @@
 from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass, field
+import math
 from .core import Face
+from .mesh_checks import audit_tetra_mesh, audit_gmsh_signed_quality
 
 @dataclass
 class Mesh:
@@ -16,6 +18,7 @@ class Mesh:
     load_areas_by_face: dict[int, float] = field(default_factory=dict)
     element_type: str = "C3D4"
     surface_triangles_by_face: dict[int, list[tuple[int,...]]] = field(default_factory=dict)
+    integrity: dict = field(default_factory=dict)
 
 def _gmsh():
     try:
@@ -26,6 +29,10 @@ def _gmsh():
 
 def _open_step(gmsh, filename):
     gmsh.model.add("EZ-FEA")
+    # Gmsh 4.x normally keeps STEP coordinates in their source units.
+    # Explicitly convert imported CAD coordinates to the solver's mm basis.
+    # This must be set *before* importShapes, for inspection and meshing alike.
+    gmsh.option.setString("Geometry.OCCTargetUnit", "MM")
     gmsh.model.occ.importShapes(str(filename))
     gmsh.model.occ.synchronize()
     if not gmsh.model.getEntities(3):
@@ -108,6 +115,8 @@ def gmsh_to_calculix_tet10(connectivity):
 def build_mesh(step_file, fixed_face, loaded_face, mesh_size_mm, *, constraint_faces=None, load_faces=None, element_type="C3D4"):
     if element_type not in ("C3D4", "C3D10"):
         raise ValueError("Unsupported element type: expected C3D4 or C3D10.")
+    if not math.isfinite(mesh_size_mm) or mesh_size_mm <= 0:
+        raise ValueError("Mesh size must be finite and positive in mm.")
     gmsh = _gmsh()
     gmsh.initialize()
     try:
@@ -143,10 +152,16 @@ def build_mesh(step_file, fixed_face, loaded_face, mesh_size_mm, *, constraint_f
                 raise RuntimeError(f"Unsupported Gmsh 3D element {etype} for {element_type}.")
             for i,label in enumerate(labels):
                 conn=tuple(int(n) for n in connectivity[i*nodes_per_element:(i+1)*nodes_per_element])
+                if int(label) in elems:
+                    raise ValueError(f"Gmsh reused element ID {int(label)}.")
                 elems[int(label)] = (conn if element_type=="C3D4"
                                      else gmsh_to_calculix_tet10(conn))
         if not elems:
             raise ValueError("No solid elements generated.")
+        integrity = audit_tetra_mesh(nodes, elems, element_type)
+        integrity.update(audit_gmsh_signed_quality(
+            gmsh.model.mesh.getElementQualities(sorted(elems), "minSICN"), len(elems)
+        ))
         support_nodes = {}
         for face in support_faces:
             ids, _, _ = gmsh.model.mesh.getNodes(2, face, True)
@@ -176,6 +191,6 @@ def build_mesh(step_file, fixed_face, loaded_face, mesh_size_mm, *, constraint_f
             raise ValueError("Connection and force regions overlap at mesh nodes.")
         return Mesh(nodes, elems, fixed_nodes, weights,
                     sum(surface_areas.values()), support_nodes, surface_weights, surface_areas,
-                    element_type, surface_triangles)
+                    element_type, surface_triangles, integrity)
     finally:
         gmsh.finalize()
