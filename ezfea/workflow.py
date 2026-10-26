@@ -33,7 +33,14 @@ def run_case(case: Analysis, output_root="runs", *, fixed_stress_probes=None):
         else:
             mesh = build_mesh(str(input_path),case.fixed_face,case.loaded_face,
                               case.mesh_size_mm, element_type=case.element_type)
+        meta["cad_import"] = {
+            "target_length_unit": "mm",
+            "gmsh_option": "Geometry.OCCTargetUnit=MM",
+            "source_unit_provenance": "STEP unit metadata interpreted by OpenCASCADE",
+            "user_check": "Confirm the original CAD export units and measured part size.",
+        }
         meta["mesh"] = {"nodes":len(mesh.nodes),"elements":len(mesh.elements),
+                        "integrity": mesh.integrity,
                         "loaded_area_mm2":mesh.loaded_area_mm2,"element_type":mesh.element_type,
                         "connections":len(case.active_connections),
                         "load_regions":len(case.active_loads),
