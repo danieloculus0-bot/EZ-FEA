@@ -67,7 +67,11 @@ python -m scripts.build_assembly_mate_evidence --out runs/mate_review
 
 Open the [Joint Matrix](https://danieloculus0-bot.github.io/EZ-FEA/joint-matrix.html), choose **Import scanned joints JSON**, and select the generated `mates.json` or `joint_matrix.json`. The workbench initially displays sample rows until you import actual evidence. For automated verification, see [Tests](https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/test.yml), [Mate Detection](https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/assembly-mate-review.yml), and [Native Contact](https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/step-contact.yml).
 
-## Latest physics verification (October 20, 2026)
+## Latest physics verification
+
+**[October 26 native evidence: inch/mm STEP, mesh refinement, bending and shear](docs/VALIDATION_SNAPSHOT_2026-10-26.md)** includes measured discrepancies, archived solver runs, and the remaining numerical limitations. Stress-probe screening and independently tested closed-form torsion calculations have been added; arbitrary native torsion analysis is not yet validated.
+
+### Earlier October 20 baseline
 
 - [**12 real load-footprint simulations**](https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/39507346099) using C3D4/C3D10 on 10 and 7 mm meshes: uniform whole-face traction versus centered and eccentric finite Gaussian pads, all at the same 100 N axial force. At 7 mm C3D10, moving the pad raised the applied bending moment from **500 to 679 N·mm** and peak recorded native stress from **1.03 to 2.44 MPa**. Every case passed numerical force and moment equilibrium. [Native workflow](https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/load-introduction.yml).
 - [36 real frame solves comparing C3D10 Gauss-coordinate stress reconstruction](https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/39505031019): same XYZ stress sampling; **8/24** physical probe histories met the provisional 10% two-step criterion, compared with **1/24** using element-mean stress recovery. Six other probes remain boundary-adjacent; ten are still mesh-sensitive.
