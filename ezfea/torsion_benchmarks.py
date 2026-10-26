@@ -9,6 +9,7 @@ general torque load button or assembly solver.
 from __future__ import annotations
 
 import argparse
+import hashlib
 from collections import defaultdict
 import json
 import math
@@ -270,12 +271,16 @@ def run_torsion_benchmark(output="runs/native_torsion", *,
         "model":"one solid round STEP, fixed x=0, tangential distributed torque at x=L",
         "element_type":"C3D10",
         "source_step":str(step),
+        "source_step_sha256":hashlib.sha256(step.read_bytes()).hexdigest(),
+        "geometry":{"radius_mm":radius_mm,"length_mm":length_mm},
+        "material":{"youngs_mpa":modulus_mpa,"poisson":poisson},
         "torque_nmm":torque_nmm,
         "reference_tip_twist_rad":reference_angle,
         "reference_surface_shear_mpa":reference_surface_tau,
         "theory":"T*L/(G*J), G=E/(2*(1+nu)), J=pi*R^4/2",
         "records":records,
         "engineering_validation":"not_established",
+        "external_source_verification":"not_embedded",
         "limits":"A single circular-shaft Saint-Venant verification is not general torsion or connection behavior",
     }
     (output/"TORSION_EVIDENCE.json").write_text(json.dumps(report,indent=2)+"\n",encoding="utf-8")
