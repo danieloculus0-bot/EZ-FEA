@@ -406,3 +406,6 @@ summary { color:#e6f6e7; }
 .frame-parameters strong {color:#c5ff4a;}
 #frameResultValues .result-summary {font-size:13px;line-height:1.55;margin:13px 0;}
 #frameResultValues .validation-link {display:inline-block;font-size:12px;margin:8px 0;}
+
+/* Black canvas portfolio standard · neutral panels; preserve application controls and accents */
+:root{--light:#050607;--white:#111417;--navy:#090b0d;--border:#343a3d}html,body{background:#050607}.topbar{background:#0b0d0f}
