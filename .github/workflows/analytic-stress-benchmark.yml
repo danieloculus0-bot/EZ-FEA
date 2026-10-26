@@ -56,7 +56,7 @@ jobs:
           cat bending_analytic_evidence/BENDING_REPORT.md >> "$GITHUB_STEP_SUMMARY"
       - name: Refine C3D10 stress and shear at fixed physical probes
         run: |
-          python -m ezfea.bending_benchmarks --out refined_c3d10_evidence --elements C3D10 --meshes 7 5 3.5
+          python -m ezfea.bending_benchmarks --out refined_c3d10_evidence --elements C3D10 --meshes 7 5 3.5 2.5
           cat refined_c3d10_evidence/BENDING_REPORT.md >> "$GITHUB_STEP_SUMMARY"
       - name: Archive raw CAD, CalculiX output and independent formulas
         if: always()
