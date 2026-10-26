@@ -13,9 +13,13 @@ on:
       - "ezfea/solver.py"
       - "ezfea/workflow.py"
       - "ezfea/convergence.py"
+      - "ezfea/probe_convergence.py"
+      - "ezfea/mechanics_references.py"
       - "tests/test_stress_interpolation.py"
       - "tests/test_analytic_benchmarks.py"
       - "tests/test_bending_benchmarks.py"
+      - "tests/test_probe_convergence.py"
+      - "tests/test_mechanics_references.py"
       - ".github/workflows/analytic-stress-benchmark.yml"
 
 permissions:
@@ -40,6 +44,8 @@ jobs:
           python -m unittest discover -s tests -p test_stress_interpolation.py -v
           python -m unittest discover -s tests -p test_analytic_benchmarks.py -v
           python -m unittest discover -s tests -p test_bending_benchmarks.py -v
+          python -m unittest discover -s tests -p test_probe_convergence.py -v
+          python -m unittest discover -s tests -p test_mechanics_references.py -v
       - name: Solve real axial bar with two element types and three grids
         run: |
           python -m ezfea.analytic_benchmarks --out axial_analytic_evidence --meshes 14 10 7
@@ -48,6 +54,10 @@ jobs:
         run: |
           python -m ezfea.bending_benchmarks --out bending_analytic_evidence --meshes 14 10 7
           cat bending_analytic_evidence/BENDING_REPORT.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Refine C3D10 stress and shear at fixed physical probes
+        run: |
+          python -m ezfea.bending_benchmarks --out refined_c3d10_evidence --elements C3D10 --meshes 7 5 3.5
+          cat refined_c3d10_evidence/BENDING_REPORT.md >> "$GITHUB_STEP_SUMMARY"
       - name: Archive raw CAD, CalculiX output and independent formulas
         if: always()
         uses: actions/upload-artifact@v4
@@ -56,5 +66,6 @@ jobs:
           path: |
             axial_analytic_evidence/
             bending_analytic_evidence/
+            refined_c3d10_evidence/
           retention-days: 30
           if-no-files-found: warn
