@@ -40,7 +40,7 @@ def make_two_body_step(path):
     return path
 
 
-def mesh_contact_step(step_file,mesh_size_mm=7.):
+def mesh_contact_step(step_file,mesh_size_mm=7.,*,joint_plan=None):
     """Mesh two STEP volumes independently; verify topology and boundary IDs."""
     if not (math.isfinite(mesh_size_mm) and mesh_size_mm>0):
         raise ValueError("Positive finite mesh size required")
@@ -51,6 +51,7 @@ def mesh_contact_step(step_file,mesh_size_mm=7.):
         gmsh.option.setNumber("Mesh.MeshSizeMax",mesh_size_mm)
         gmsh.option.setNumber("Mesh.MeshSizeMin",mesh_size_mm/3)
         gmsh.model.add("EZ-FEA-two-solid-STEP")
+        gmsh.option.setString("Geometry.OCCTargetUnit","MM")
         gmsh.model.occ.importShapes(str(step_file))
         gmsh.model.occ.synchronize()
         bodies=sorted(tag for _,tag in gmsh.model.getEntities(3))
@@ -72,6 +73,17 @@ def mesh_contact_step(step_file,mesh_size_mm=7.):
         pad_top=select_boundary(top,20.)
         if base_contact==pad_contact:
             raise ValueError("Assembly STEP shares a CAD contact face; independent interface required")
+        if joint_plan is not None:
+            if joint_plan.get("schema")!="ezfea.reviewed_contact_plan.v1":
+                raise ValueError("Expected verified reviewed joint plan")
+            if (joint_plan.get("base_component")!=bottom or
+                joint_plan.get("pad_component")!=top or
+                joint_plan.get("base_face")!=base_contact or
+                joint_plan.get("pad_face")!=pad_contact):
+                raise ValueError("Reviewed Joint Matrix face/component IDs do not match source STEP")
+            import hashlib
+            if hashlib.sha256(Path(step_file).read_bytes()).hexdigest()!=joint_plan.get("source_step_sha256"):
+                raise ValueError("Reviewed STEP hash changed after mate scan")
         gmsh.model.mesh.generate(3)
         gmsh.model.mesh.setOrder(2)
         tags,coords,_=gmsh.model.mesh.getNodes()
@@ -186,11 +198,13 @@ def _native_base_reaction(file,base_nodes):
     return [sum(x[i] for x in rows) for i in (1,2,3)]
 
 
-def run_step_contact(root="runs/step_contact",*,mesh_size_mm=7.):
+def run_step_contact(root="runs/step_contact",*,mesh_size_mm=7.,source_step=None,joint_plan=None):
     root=Path(root)
     root.mkdir(parents=True,exist_ok=True)
-    cad=make_two_body_step(root/"two_unmerged_steel_parts.step")
-    model=mesh_contact_step(cad,mesh_size_mm)
+    if joint_plan is not None and source_step is None:
+        raise ValueError("A reviewed contact plan requires its original STEP")
+    cad=Path(source_step) if source_step is not None else make_two_body_step(root/"two_unmerged_steel_parts.step")
+    model=mesh_contact_step(cad,mesh_size_mm,joint_plan=joint_plan)
     cases=(("compression_contact",True,True),
            ("compression_disconnected",True,False),
            ("separation_contact",False,True))
@@ -216,6 +230,7 @@ def run_step_contact(root="runs/step_contact",*,mesh_size_mm=7.):
         raise ValueError(f"Imported STEP contact failed compression/release checks: {records}")
     report={
         "schema":"ezfea.step_two_body_contact.v1",
+        "reviewed_joint_plan":joint_plan,
         "element_type":"C3D10",
         "STEP_input_has_two_independent_solids":True,
         "shared_mesh_nodes":model["shared_node_count"],
