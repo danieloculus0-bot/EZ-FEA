@@ -47,6 +47,8 @@ def matrix_from_graph(graph):
             "overlap_area_bbox_mm2":joint["overlap_area_bbox_mm2"],
         })
     return {"schema":"ezfea.joint_matrix.v1",
+            "source_step":graph.get("source_step"),
+            "source_sha256":graph.get("source_sha256"),
             "ground_component":graph["ground_component"],
             "components":graph["components"],
             "rows":rows,
