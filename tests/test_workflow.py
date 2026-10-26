@@ -15,13 +15,13 @@ class WorkflowTests(unittest.TestCase):
             step.write_text("model")
             case=Analysis(str(step),1,2,(0,-1,0),1)
             mesh=Mesh({1:(0,0,0),2:(1,0,0),3:(0,1,0),4:(0,0,1),5:(1,1,1)},
-                      {1:(1,2,3,4)},[1],{5:1},1)
+                      {1:(1,2,3,4)},[1,2,3],{5:1},1)
             def mock_calculix(inp):
                 inp.with_suffix(".dat").write_text(
                     "displacements (vx,vy,vz) for set ALL_NODES and time 1.0\n"
                     + "".join(f"{i} 0 0 0\\n" for i in range(1,6)).replace("\\n","\n")
                     + "\nforces (fx,fy,fz) for set CONNECTION and time 1.0\n"
-                    + "1 0 1 0\n"
+                    + "1 0 1 0\n2 0 0 0\n3 0 0 0\n"
                     + "\nstresses (elem, integ.pnt.,sxx,syy,szz,sxy,sxz,syz) for set PART and time 1.0\n"
                     + "1 1 10 0 0 0 0 0\n"
                 )
