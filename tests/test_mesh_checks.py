@@ -40,7 +40,7 @@ class MeshCheckTests(unittest.TestCase):
 
     def test_node_only_contact_is_not_a_connected_volume(self):
         nodes = {**{k: _NODES[k] for k in (1, 2, 3, 4)},
-                 10: (10., 0., 0.), 11: (11., 0., 0.),
+                 10: (10., 0., 0.), 11: (11., 1., 0.),
                  12: (10., 1., 1.)}
         with self.assertRaisesRegex(ValueError, "Disconnected volume mesh"):
             audit_tetra_mesh(nodes, {1: (1, 2, 3, 4), 2: (1, 10, 11, 12)})
