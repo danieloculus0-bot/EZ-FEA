@@ -7,9 +7,9 @@
 <meta name="description" content="EZ-FEA experimental assembly joint spreadsheet. Edits do not automatically assign solver physics.">
 <title>EZ-FEA | Joint Matrix</title>
 <style>
-:root{color-scheme:dark;--bg:#090e0d;--surface:#101917;--surface2:#172420;--line:#294039;--lime:#b3ff52;--text:#e9f5ee;--muted:#9eb3a7;--warning:#f6b65c}
+:root{color-scheme:dark;--bg:#090e0d;--surface:#0c0e10;--surface2:#121416;--line:#1f2123;--lime:#b3ff52;--text:#e9f5ee;--muted:#9eb3a7;--warning:#f6b65c}
 *{box-sizing:border-box}
-body{margin:0;background:radial-gradient(circle at 80% 0%,#193421,#090e0d 46%);color:var(--text);font:14px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
+body{margin:0;background:radial-gradient(circle at 80% 0%,#151719,#090e0d 46%);color:var(--text);font:14px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
 a{color:var(--lime);text-decoration:none}
 button,select{font:inherit}
 button{cursor:pointer}
@@ -22,7 +22,7 @@ p{margin:7px 0}
 .muted{color:var(--muted)}
 .hero{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap}
 .eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.17em;color:var(--lime);font-weight:700}
-.notice{margin:20px 0;padding:12px 15px;background:#1b2521;border-left:3px solid var(--warning);color:#d6e5d8;border-radius:6px}
+.notice{margin:20px 0;padding:12px 15px;background:#131517;border-left:3px solid var(--warning);color:#d6e5d8;border-radius:6px}
 .controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:15px 0 12px}
 .btn{background:var(--surface2);border:1px solid #365345;color:var(--text);border-radius:7px;padding:8px 13px;min-height:37px}
 .btn:disabled{opacity:.35;cursor:not-allowed}
@@ -34,16 +34,16 @@ p{margin:7px 0}
 .stat span{color:var(--muted);font-size:12px}
 table{width:100%;border-collapse:separate;border-spacing:0;white-space:nowrap}
 .table-wrap{overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px;min-height:265px}
-thead th{background:#16251e;color:#bcd5c3;text-align:left;font-size:12px;font-weight:600;position:sticky;top:0;z-index:2;padding:12px 14px;border-bottom:1px solid #3c5949}
+thead th{background:#111315;color:#bcd5c3;text-align:left;font-size:12px;font-weight:600;position:sticky;top:0;z-index:2;padding:12px 14px;border-bottom:1px solid #3c5949}
 td{padding:9px 14px;border-bottom:1px solid #26392f;vertical-align:middle;position:relative}
-tr:hover td{background:#1d3025}
+tr:hover td{background:#16181a}
 td.num{color:#708c7a;width:42px}
 .joint{font-weight:700;color:var(--lime)}
 .cell{padding:0!important;min-width:170px;user-select:none}
-.cell[data-selected=true]{outline:2px solid var(--lime);outline-offset:-2px;background:#243c25}
-.cell[data-range=true]{background:#27402a}
+.cell[data-selected=true]{outline:2px solid var(--lime);outline-offset:-2px;background:#1a1c1e}
+.cell[data-range=true]{background:#1c1e20}
 .cell select{display:block;width:100%;padding:12px 26px 12px 12px;color:var(--text);background:transparent;border:0;outline:none;appearance:none;cursor:pointer}
-.cell option{color:#e9f5ee;background:#15201b}
+.cell option{color:#e9f5ee;background:#0f1113}
 .cell:after{content:"⌄";position:absolute;right:13px;top:8px;color:var(--lime);pointer-events:none}
 .handle{position:absolute;right:-1px;bottom:-1px;width:12px;height:12px;background:var(--lime);border:2px solid var(--surface);border-radius:2px;z-index:3;cursor:crosshair;touch-action:none}
 .status{font-size:11px;padding:4px 9px;border:1px solid #465341;border-radius:20px;color:#a0bea9}
@@ -55,7 +55,14 @@ input[type=file]{display:none}
 @media(max-width:650px){.shell{padding:12px}.stats{grid-template-columns:1fr 1fr}h1{font-size:27px}}
 
 /* Black canvas portfolio standard · neutral surfaces; project accents preserved */
-:root{--bg:#050607;--surface:#111417;--surface2:#181c1f;--line:#343a3d}html,body{background:#050607}
+:root{--bg:#050607;--surface:#111417;--surface2:#101214;--line:#212325}html,body{background:#050607}
+
+/* Unified black-first page chrome; preserve colored game artwork and data status signals. */
+html{background:#050607}
+body{background:#050607}
+:root{--ink:#edf5f0;--muted:#b7c4bb;--light:#050607;--white:#121619;--navy:#090c0e;--border:#343c3e}
+.panel,.viewer-panel,.results-panel,.results-footer{background:#111519;border-color:#343c3e}
+.viewer-stage{background:radial-gradient(ellipse at 52% 48%,#1c2325,#0c1113 90%)}
 </style>
 </head>
 <body>
