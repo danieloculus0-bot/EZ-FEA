@@ -14,6 +14,7 @@ from pathlib import Path
 
 from .core import Analysis
 from .workflow import run_case
+from .probe_convergence import screen_fixed_probe_stress
 
 
 def relative_change(previous: float, current: float) -> float:
@@ -31,6 +32,7 @@ def run_refinement(
     displacement_tolerance=0.05,
     analytical_displacement_mm=None,
     fixed_stress_probes=None,
+    stress_probe_tolerance=0.10,
 ):
     """Collect independent native solves with identical non-mesh inputs.
 
@@ -45,6 +47,11 @@ def run_refinement(
         raise ValueError("mesh sizes must be strictly decreasing")
     if not (math.isfinite(displacement_tolerance) and 0 < displacement_tolerance < 1):
         raise ValueError("displacement tolerance must be between 0 and 1")
+    if fixed_stress_probes is not None and (not isinstance(fixed_stress_probes, dict) or
+                                         not fixed_stress_probes):
+        raise ValueError("Provide named physical-coordinate probes or None.")
+    if not math.isfinite(stress_probe_tolerance) or not 0 < stress_probe_tolerance < 1:
+        raise ValueError("Stress probe tolerance must be between zero and one.")
     if analytical_displacement_mm is not None and (
         not math.isfinite(analytical_displacement_mm) or analytical_displacement_mm <= 0
     ):
@@ -63,6 +70,7 @@ def run_refinement(
         "requested_mesh_sizes_mm": sizes,
         "displacement_change_threshold": displacement_tolerance,
         "analytical_displacement_mm": analytical_displacement_mm,
+        "stress_probe_change_threshold": stress_probe_tolerance,
         "note": "Global peak stress may be mesh-sensitive; displacement stabilization is not engineering validation.",
     }
     records = []
@@ -130,6 +138,11 @@ def run_refinement(
             if counts_increasing and last_two_stable else "refinement_not_yet_stable"
         ),
         "engineering_validation": "not_established",
+        "fixed_probe_stress_observation": (
+            screen_fixed_probe_stress(records, element_type=case.element_type,
+                                      tolerance=stress_probe_tolerance)
+            if fixed_stress_probes is not None else None
+        ),
         "max_stress_note": "Global peak stress may shift or diverge at idealized restraints; never infer stress convergence from this report alone.",
     }
     (root / "refinement.json").write_text(
