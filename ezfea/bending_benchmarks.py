@@ -15,6 +15,7 @@ from .core import Analysis, Material
 from .demo import make_demo_step
 from .mesh import inspect_step
 from .workflow import run_case
+from .probe_convergence import screen_fixed_probe_stress
 
 
 def rectangular_second_moment_mm4(b_mm,h_mm):
@@ -61,6 +62,7 @@ def run_bending_reference(output_root="runs/bending_reference", *,
     sigma=abs(cantilever_bending_stress_mpa(
         force,length,probe_xyz[0],probe_xyz[1]-height/2,I))
     rows=[]
+    probe_series={etype:[] for etype in element_types}
     for element_type in element_types:
         for mesh in meshes_mm:
             case=Analysis(str(step),fixture.tag,loaded.tag,(0,-force,0),
@@ -76,6 +78,12 @@ def run_bending_reference(output_root="runs/bending_reference", *,
                           else "fixed_coordinate_stress")
             measured=metrics[recovery_key]["probes"]["outer_fiber_at_midspan"]
             axial_sigma=abs(measured["tensor_mpa"][0])
+            probe_series[element_type].append({
+                "mesh_size_mm":mesh,
+                "element_count":record["mesh"]["elements"],
+                "fixed_coordinate_stress":metrics.get("fixed_coordinate_stress"),
+                "fixed_coordinate_stress_affine":metrics.get("fixed_coordinate_stress_affine"),
+            })
             rows.append({
                 "element_type":element_type,
                 "mesh_size_mm":mesh,
@@ -91,12 +99,18 @@ def run_bending_reference(output_root="runs/bending_reference", *,
                 "recovery":measured["recovery"],
                 "native_run_path":str(out.relative_to(root)),
             })
+    stress_screens={
+        etype: (screen_fixed_probe_stress(series,element_type=etype)
+                if len(series)>=3 else {"status":"not_run_need_three_grids"})
+        for etype,series in probe_series.items()
+    }
     report={"schema":"ezfea.cantilever_analytic_reference.v1",
             "model":"100 x 10 x 10 mm homogeneous steel, 100 N transverse tip force",
             "assumptions":"Euler Bernoulli bending, small shear correction; free-end surface loading and fixed face differ from ideal beam BC.",
             "I_mm4":I,"youngs_modulus_mpa":modulus,
             "poisson_ratio":poisson,"force_n":force,
             "probe":probe,"rows":rows,
+            "fixed_probe_stress_convergence":stress_screens,
             "engineering_validation":"not_established"}
     (root/"bending_analytical_comparison.json").write_text(json.dumps(report,indent=2)+"\n",encoding="utf-8")
     lines=["# 3D solid FEA cantilever versus independent beam theory","","| Element | Mesh (mm) | 3D max disp (mm) | EB theory (mm) | Δ deflection | 3D probe |σxx| (MPa) | EB nominal |σxx| (MPa) | Δ stress |",
@@ -108,7 +122,13 @@ def run_bending_reference(output_root="runs/bending_reference", *,
                      f"{r['relative_tip_displacement_error_against_EB']*100:.3g}% | "
                      f"{r['actual_fixed_probe_abs_sigma_x_mpa']:.6g} | "
                      f"{sigma:.6g} | {r['relative_outer_fiber_stress_error']*100:.3g}% |")
-    lines+=["",
+    lines+=["", "Fixed physical-coordinate stress convergence screening (not validation):"]
+    for etype,screen in stress_screens.items():
+        lines.append(f"- {etype}: " + (
+            "stable at checked grids" if screen.get("all_probes_stable_at_checked_mesh_sizes") else
+            "review / further refinement required"
+        ))
+    lines+=[
         f"Timoshenko 1D shear-corrected tip approximation: {reference+shear:.8g} mm.",
         "3D boundary layers, end-face load application and probe recovery remain independent limitations.",
         "No code is considered design-certified by agreement with this textbook beam case."]
