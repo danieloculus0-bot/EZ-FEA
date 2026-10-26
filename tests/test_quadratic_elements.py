@@ -33,7 +33,11 @@ class QuadraticElementTests(unittest.TestCase):
             cad=root/"part.step"
             cad.write_text("unit fake STEP")
             case=Analysis(str(cad),1,2,(0,0,-90),10,element_type="C3D10")
-            nodes={i:(float(i),0.,0.) for i in range(1,11)}
+            # Use a physically three-dimensional reference tetrahedron:
+            # an all-collinear synthetic fixture must fail the support check.
+            nodes={1:(0.,0.,0.),2:(1.,0.,0.),3:(0.,1.,0.),4:(0.,0.,1.),
+                   5:(.5,0.,0.),6:(.5,.5,0.),7:(0.,.5,0.),
+                   8:(0.,0.,.5),9:(.5,0.,.5),10:(0.,.5,.5)}
             mesh=Mesh(nodes,{99:tuple(range(1,11))},
                       [1,2,3,4],{8:1/3,9:1/3,10:1/3},2.,
                       element_type="C3D10")
