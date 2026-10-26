@@ -122,6 +122,13 @@ def run_bending_reference(output_root="runs/bending_reference", *,
             "probe":probe,"rows":rows,
             "reference_neutral_axis_shear_mpa":reference_tau,
             "fixed_probe_stress_convergence":stress_screens,
+            "shear_reference_screening": {
+                "status": ("review_required" if any(
+                    r["relative_nominal_shear_error"] > .10 for r in rows
+                ) else "within_provisional_10_percent"),
+                "approximation": "Classical rectangular-beam shear distribution, not an exact 3D solution",
+                "engineering_validation": "not_established",
+            },
             "engineering_validation":"not_established"}
     (root/"bending_analytical_comparison.json").write_text(json.dumps(report,indent=2)+"\n",encoding="utf-8")
     lines=["# 3D solid FEA cantilever versus independent beam theory","","| Element | Mesh (mm) | 3D max disp (mm) | EB theory (mm) | Δ deflection | 3D probe |σxx| (MPa) | EB nominal |σxx| (MPa) | Δ stress |",
@@ -145,6 +152,12 @@ def run_bending_reference(output_root="runs/bending_reference", *,
             "stable at checked grids" if screen.get("all_probes_stable_at_checked_mesh_sizes") else
             "review / further refinement required"
         ))
+    lines+=["",
+        "Shear is an approximate 1D cross-section comparison, not an exact solution",
+        "for this clamped, end-loaded three-dimensional solid.",
+        "Differences of 10% or more are flagged as review-required rather than passed."] 
+    if any(r["relative_nominal_shear_error"]>0.10 for r in rows):
+        lines.append("SHEAR STATUS: review required; simplified reference discrepancy exceeds 10%.")
     lines+=[
         f"Timoshenko 1D shear-corrected tip approximation: {reference+shear:.8g} mm.",
         "3D boundary layers, end-face load application and probe recovery remain independent limitations.",
@@ -158,8 +171,10 @@ def main():
     p=argparse.ArgumentParser()
     p.add_argument("--out",default="runs/bending_reference")
     p.add_argument("--meshes",nargs="+",type=float,default=(14.,10.,7.))
+    p.add_argument("--elements",nargs="+",choices=("C3D4","C3D10"),
+                   default=("C3D4","C3D10"))
     args=p.parse_args()
-    data=run_bending_reference(args.out,meshes_mm=args.meshes)
+    data=run_bending_reference(args.out,element_types=args.elements,meshes_mm=args.meshes)
     print((Path(args.out)/"BENDING_REPORT.md").read_text(encoding="utf-8"))
     quadratic=[r for r in data["rows"] if r["element_type"]=="C3D10"]
     fine=sorted(quadratic,key=lambda row:row["mesh_size_mm"])[0]
