@@ -141,10 +141,13 @@ def summarize_dat(dat_file: Path, applied_force_n, yield_mpa, *, expected_nodes=
             raise ValueError(f"{label} IDs do not match the solved mesh; missing "
                              f"{len(set(required) - actual)}, unexpected "
                              f"{len(actual - set(required))}.")
-    peak_u = max(nodes, key=lambda row:math.sqrt(sum(x*x for x in row[1:])))
-    peak_s = max(stress, key=lambda row:von_mises_mpa(*row[2:]))
-    u_mm = math.sqrt(sum(x*x for x in peak_u[1:]))
-    vm_mpa = von_mises_mpa(*peak_s[2:])
+    try:
+        peak_u = max(nodes, key=lambda row:math.sqrt(sum(x*x for x in row[1:])))
+        peak_s = max(stress, key=lambda row:von_mises_mpa(*row[2:]))
+        u_mm = math.sqrt(sum(x*x for x in peak_u[1:]))
+        vm_mpa = von_mises_mpa(*peak_s[2:])
+    except OverflowError as exc:
+        raise ValueError("Nonfinite derived displacement or stress; results require review.") from exc
     if not math.isfinite(u_mm) or not math.isfinite(vm_mpa):
         raise ValueError("Nonfinite derived displacement or stress; results require review.")
     # CalculiX printed RF also includes direct applied nodal loads at reported
