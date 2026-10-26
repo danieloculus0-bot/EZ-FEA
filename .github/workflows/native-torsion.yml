@@ -1,0 +1,46 @@
+name: Native C3D10 STEP Torsion Benchmark
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "ezfea/torsion_benchmarks.py"
+      - "ezfea/mechanics_references.py"
+      - "ezfea/load_footprints.py"
+      - "ezfea/results.py"
+      - "ezfea/mesh_checks.py"
+      - "tests/test_torsion_benchmarks.py"
+      - ".github/workflows/native-torsion.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  real-step-torsion:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install real STEP mesher and CalculiX
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y calculix-ccx libglu1-mesa
+          python -m pip install -r requirements.txt
+      - name: Check pure torque and twist fitting before native analysis
+        run: python -m unittest discover -s tests -p test_torsion_benchmarks.py -v
+      - name: Solve two actual STEP/C3D10 shaft torsion models
+        run: |
+          python -m ezfea.torsion_benchmarks --out native_torsion_evidence --meshes 6 4
+          cat native_torsion_evidence/TORSION_REPORT.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Archive CAD, meshes, loading, inputs and solver evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: EZ-FEA-native-circular-torsion-evidence
+          path: native_torsion_evidence/
+          retention-days: 30
+          if-no-files-found: warn
