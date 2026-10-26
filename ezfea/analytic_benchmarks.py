@@ -16,6 +16,7 @@ from .core import Analysis
 from .demo import make_demo_step
 from .mesh import inspect_step
 from .workflow import run_case
+from .probe_convergence import screen_fixed_probe_stress
 
 
 def axial_nominal_stress_mpa(force_n,area_mm2):
@@ -48,6 +49,7 @@ def run_axial_reference(output_root="runs/axial_reference", *,
     target_u=axial_nominal_elongation_mm(force,length,area,modulus)
     probe={"bar_core_midspan":(50.13,4.31,5.82)}
     rows=[]
+    probe_series={etype:[] for etype in element_types}
     for etype in element_types:
         if etype not in ("C3D4","C3D10"):
             raise ValueError("Unsupported analytical benchmark element")
@@ -67,6 +69,12 @@ def run_axial_reference(output_root="runs/axial_reference", *,
             movement=result["max_displacement_mm"]
             if not all(math.isfinite(x) and x>0 for x in (stress,movement)):
                 raise ValueError("Missing actual stress or displacement in native benchmark")
+            probe_series[etype].append({
+                "mesh_size_mm":mesh,
+                "element_count":data["mesh"]["elements"],
+                "fixed_coordinate_stress":result.get("fixed_coordinate_stress"),
+                "fixed_coordinate_stress_affine":result.get("fixed_coordinate_stress_affine"),
+            })
             rows.append({
                 "element_type":etype,"mesh_size_mm":mesh,
                 "probe_coordinate_mm":list(probe["bar_core_midspan"]),
@@ -80,13 +88,18 @@ def run_axial_reference(output_root="runs/axial_reference", *,
                 "native_equilibrium_relative_error":result["force_balance_relative_error"],
                 "native_case_directory":str(output.relative_to(root)),
             })
+    stress_screens={
+        etype: (screen_fixed_probe_stress(series,element_type=etype)
+                if len(series)>=3 else {"status":"not_run_need_three_grids"})
+        for etype,series in probe_series.items()
+    }
     report={
         "schema":"ezfea.axial_analytic_reference.v1",
         "model":"100 x 10 x 10 mm homogeneous linear elastic bar, end-face clamped/loaded",
         "assumptions":"Ideal 1D axial nominal stress F/A and elongation FL/(EA); 3D end restraint introduces Poisson correction locally.",
         "units":"N, mm, MPa",
         "force_n":force,"area_mm2":area,"length_mm":length,"modulus_mpa":modulus,
-        "probes":probe,"rows":rows,
+        "probes":probe,"rows":rows,"fixed_probe_stress_convergence":stress_screens,
         "engineering_validation":"not_established",
     }
     (root/"analytical_comparison.json").write_text(json.dumps(report,indent=2)+"\n",encoding="utf-8")
@@ -102,7 +115,13 @@ def run_axial_reference(output_root="runs/axial_reference", *,
                      f"{r['relative_nominal_stress_error']*100:.3g}% | "
                      f"{r['fe_max_nodal_displacement_mm']:.6g} | "
                      f"{r['relative_elongation_approximation_error']*100:.3g}% |")
-    lines += ["", "No mesh convergence or experimental correctness is implied by passing this simple reference."]
+    lines += ["", "Fixed physical-coordinate stress convergence screening (not validation):"]
+    for etype,screen in stress_screens.items():
+        lines.append(f"- {etype}: " + (
+            "stable at checked grids" if screen.get("all_probes_stable_at_checked_mesh_sizes") else
+            "review / further refinement required"
+        ))
+    lines += ["", "Agreement with this simple reference is not experimental validation."]
     md="\n".join(lines)+"\n"
     (root/"ANALYTICAL_REPORT.md").write_text(md,encoding="utf-8")
     return report
