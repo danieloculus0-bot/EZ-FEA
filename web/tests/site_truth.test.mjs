@@ -14,6 +14,11 @@ test("primary homepage is the native Warren truss experiment, not the beam",()=>
   const loader=readFileSync(new URL("../truss_loader.mjs",import.meta.url),"utf8");
   assert.match(loader,/truss_bundle\.mjs/);
   assert.match(loader,/truss_demo\.mjs/);
+  assert.match(loader,/truss_fallback\.mjs/);
+  const fallback=readFileSync(new URL("../truss_fallback.mjs",import.meta.url),"utf8");
+  assert.match(fallback,/requestAnimationFrame/);
+  assert.match(fallback,/pointermove/);
+  assert.match(fallback,/software 3D orbit/i);
   assert.match(html,/1,000 N/);
   assert.match(html,/Left fixed · right slides X/);
   assert.match(html,/id="trussCanvas"/);
