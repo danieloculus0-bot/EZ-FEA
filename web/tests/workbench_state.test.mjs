@@ -22,7 +22,7 @@ test("changing ANY structural input invalidates old CalculiX results",()=>{
   assert.equal(hasNativeResults("beam",DEFAULT_TRUSS),false);
 });
 test("edited Warren truss retains its member identity and transforms real geometry",()=>{
-  const v={span:1200,rise:300,chord:32,web:22,load:5000};
+  const v={...DEFAULT_TRUSS,span:1200,rise:300,chord:32,web:22,load:5000};
   const bars=alteredMembers(source.geometry,v);
   assert.equal(bars.length,10);
   assert.equal(bars[0].end[0],1200);
