@@ -20,6 +20,7 @@ let marked={hold:null,load:null};
 let visibleSupports=true,visibleLoad=true;
 const selectors=[];
 let down=null,canvasReady=false;
+let autoOrbitEnabled=true;
 const SOURCE="https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/40473627691";
 
 const value=(id)=>Number(el(id).value);
@@ -82,7 +83,25 @@ function init3D(){
   orbit=new OrbitControls(camera,renderer.domElement);
   orbit.enableDamping=true;orbit.dampingFactor=.07;
   orbit.minDistance=3;orbit.maxDistance=50000;
+  orbit.autoRotate=true;
+  orbit.autoRotateSpeed=2.6;
   renderer.domElement.style.cursor="grab";
+  renderer.domElement.style.touchAction="none";
+  renderer.domElement.tabIndex=0;
+  renderer.domElement.setAttribute("aria-label","Interactive 3D model. Drag or swipe to rotate, scroll or pinch to zoom. Arrow keys rotate.");
+  orbit.addEventListener("start",()=>{
+    if(autoOrbitEnabled)updateAutoRotate(false);
+    renderer.domElement.style.cursor="grabbing";
+  });
+  orbit.addEventListener("end",()=>{renderer.domElement.style.cursor="grab";});
+  orbit.addEventListener("change",updateRotationReadout);
+  renderer.domElement.addEventListener("keydown",event=>{
+    if(event.key==="ArrowLeft"||event.key==="ArrowRight"){
+      event.preventDefault();orbitBy(event.key==="ArrowLeft"?-.28:.28);
+    }else if(event.key==="ArrowUp"||event.key==="ArrowDown"){
+      event.preventDefault();orbitPitch(event.key==="ArrowUp"?-.18:.18);
+    }
+  });
   renderer.domElement.addEventListener("pointerdown",e=>{
     down={x:e.clientX,y:e.clientY};
   });
@@ -107,6 +126,44 @@ function init3D(){
     requestAnimationFrame(animate);
   })();
 }
+function updateRotationReadout(){
+  if(!orbit||!camera)return;
+  const angle=Math.round(THREE.MathUtils.radToDeg(orbit.getAzimuthalAngle()));
+  const tilt=Math.round(THREE.MathUtils.radToDeg(orbit.getPolarAngle()));
+  el("rotationReadout").textContent=
+    "3D camera: "+angle+"° horizontal · "+tilt+
+    "° vertical  ·  drag/swipe to rotate · wheel/pinch to zoom";
+}
+function updateAutoRotate(enabled){
+  autoOrbitEnabled=Boolean(enabled);
+  if(orbit)orbit.autoRotate=autoOrbitEnabled;
+  const button=el("orbitAuto");
+  button.textContent="Auto-rotate: "+(autoOrbitEnabled?"ON":"OFF");
+  button.setAttribute("aria-pressed",String(autoOrbitEnabled));
+}
+function orbitBy(amount){
+  if(!orbit||!camera)return;
+  updateAutoRotate(false);
+  const direction=camera.position.clone().sub(orbit.target);
+  direction.applyAxisAngle(new THREE.Vector3(0,1,0),amount);
+  camera.position.copy(orbit.target).add(direction);
+  orbit.update();
+  updateRotationReadout();
+}
+function orbitPitch(amount){
+  if(!orbit||!camera)return;
+  updateAutoRotate(false);
+  const direction=camera.position.clone().sub(orbit.target);
+  const right=new THREE.Vector3().crossVectors(
+    new THREE.Vector3(0,1,0),direction).normalize();
+  if(right.lengthSq()<.1)return;
+  direction.applyAxisAngle(right,amount);
+  const tilt=Math.acos(THREE.MathUtils.clamp(direction.y/direction.length(),-1,1));
+  if(tilt<.12||tilt>Math.PI-.12)return;
+  camera.position.copy(orbit.target).add(direction);
+  orbit.update();
+  updateRotationReadout();
+}
 function centerCamera(){
   if(!canvasReady||!group.children.length)return;
   const bounds=new THREE.Box3().setFromObject(group);
@@ -118,6 +175,7 @@ function centerCamera(){
   camera.far=radius*1000;
   camera.position.copy(center).add(new THREE.Vector3(radius*.82,radius*.50,radius*1.15));
   camera.updateProjectionMatrix();orbit.update();
+  updateRotationReadout();
 }
 function material(hex,transparency=false){
   return new THREE.MeshStandardMaterial({
@@ -536,7 +594,12 @@ async function launch(){
   el("toggleLoad").addEventListener("click",()=>{
     visibleLoad=!visibleLoad;setVisibility();
   });
-  el("resetTrussView").addEventListener("click",centerCamera);
+  el("resetTrussView").addEventListener("click",()=>{
+    centerCamera();updateAutoRotate(false);
+  });
+  el("orbitLeft").addEventListener("click",()=>orbitBy(-.34));
+  el("orbitRight").addEventListener("click",()=>orbitBy(.34));
+  el("orbitAuto").addEventListener("click",()=>updateAutoRotate(!autoOrbitEnabled));
   el("restoreTruss").addEventListener("click",restoreTruss);
   el("downloadSetup").addEventListener("click",saveTruss);
   el("downloadMesh").addEventListener("click",saveMesh);
