@@ -238,11 +238,12 @@ def run_native_child_process(case,output_root="runs/desktop"):
             "mesh_size_mm":case.mesh_size_mm,
             "material":asdict(case.material),
             "element_type":case.element_type,
-            "connections":[asdict(c) for c in case.connections],
-            "loads":[asdict(load) for load in case.loads],
         },
         "output_root":str(root),
     }
+    if case.connections or case.loads:
+        request["case"]["connections"]=[asdict(c) for c in case.connections]
+        request["case"]["loads"]=[asdict(load) for load in case.loads]
     with tempfile.TemporaryDirectory(prefix="ezfea-worker-") as tmp:
         input_path=Path(tmp)/"request.json"
         output_path=Path(tmp)/"response.json"
