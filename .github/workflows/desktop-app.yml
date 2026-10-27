@@ -7,6 +7,7 @@ on:
     paths:
       - "app.py"
       - "ezfea/desktop_controller.py"
+      - "ezfea/desktop_worker.py"
       - "tests/test_desktop_controller.py"
       - "tests/test_desktop_gui.py"
       - ".github/workflows/desktop-app.yml"
@@ -42,8 +43,12 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           source=Path("app.py").read_text()
-          assert "run_desktop_case" in source
+          worker=Path("ezfea/desktop_worker.py").read_text()
+          controller=Path("ezfea/desktop_controller.py").read_text()
+          assert "run_native_child_process" in source
+          assert "run_desktop_case" in worker
+          assert "run_case(case" in controller
           assert "self.result_vars" in source
           assert "RUN REAL 3D ANALYSIS" in source
-          print("Desktop runs real source STEP through native workflow, not the browser demo.")
+          print("Desktop invokes real Gmsh/CalculiX in a separate main-thread process.")
           PY
