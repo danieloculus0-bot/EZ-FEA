@@ -14,6 +14,8 @@ import json
 import math
 from pathlib import Path
 
+from .fixture_suggestions import analyze_open_model, check_hints
+
 MAX_PREVIEW_TRIANGLES=9500
 SCHEMA="ezfea.cad_face_preview.v1"
 
@@ -76,6 +78,7 @@ def extract_step_faces(source, *, triangle_limit=MAX_PREVIEW_TRIANGLES):
             "schema":SCHEMA,"source_sha256":sha,
             "cad_face_ids":faces,"triangles":triangles,
             "triangle_count":len(triangles),
+            "fixture_hints":analyze_open_model(gmsh,sha),
             "basis":"source STEP imported as millimeters",
         }
     finally:
@@ -111,6 +114,8 @@ def validate_preview(data,*,expected_sha,expected_faces):
         clean.append((tri["face"],tuple(tuple(p) for p in pts)))
     if covered!=set(faces):
         raise ValueError("Preview omitted a CAD face")
+    if "fixture_hints" in data:
+        check_hints(data["fixture_hints"],source_sha256=expected_sha,face_ids=faces)
     return clean
 
 
