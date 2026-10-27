@@ -7,6 +7,7 @@ on:
     paths:
       - "app.py"
       - "ezfea/functional_pass.py"
+      - "scripts/publish_truss_demo.py"
       - "ezfea/desktop_controller.py"
       - "ezfea/desktop_worker.py"
       - "ezfea/mesh.py"
@@ -65,6 +66,24 @@ jobs:
               report.write("\nNot approved for structural sign-off, weld strength, physical bolts, or general multibody solves.\n")
           PY
           cat acceptance_summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Export actual fused truss STEP surface and verified published data
+        run: |
+          python -m scripts.publish_truss_demo real_functional_acceptance \
+            --out real_functional_acceptance/published \
+            --run-url "https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --commit "$GITHUB_SHA"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          folder=Path("real_functional_acceptance/published")
+          case=json.loads((folder/"truss_demo.json").read_text())
+          assert case["schema"]=="ezfea.truss_browser_evidence.v1"
+          assert case["native"]["force_balance_check"]=="pass"
+          assert case["native"]["moment_balance_check"]=="pass"
+          assert case["native"]["elements"]>100
+          assert (folder/"warren_truss.stl").stat().st_size>1000
+          print("Verified native FEA and actual STEP surface ready to publish")
+          PY
       - name: Drive actual Tk app face selection, hole suggestion, invalid edits and solve
         env:
           EZFEA_DESKTOP_GUI: "1"
