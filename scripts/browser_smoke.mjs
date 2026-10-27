@@ -24,7 +24,10 @@ try{
   },{timeout:25000});
   const canvas=page.locator("#trussCanvas canvas");
   const hash=buf=>createHash("sha256").update(buf).digest("hex");
-  await page.waitForTimeout(450);
+  await page.locator("#orbitAuto").click();
+  assert.equal(await page.locator("#orbitAuto").getAttribute("aria-pressed"),"false");
+  const angle=async()=>await page.locator("#rotationReadout").innerText();
+  const beforeAngle=await angle();
   const before=hash(await canvas.screenshot());
   const b=await canvas.boundingBox();
   assert.ok(b && b.width>100 && b.height>100);
@@ -35,6 +38,21 @@ try{
   await page.waitForTimeout(600);
   const after=hash(await canvas.screenshot());
   assert.notEqual(after,before,"Orbit dragging did not change the visible WebGL model");
+  const draggedAngle=await angle();
+  assert.notEqual(draggedAngle,beforeAngle,"Drag did not move actual camera orientation");
+  await page.locator("#orbitRight").click();
+  await page.waitForTimeout(200);
+  const buttonAngle=await angle();
+  assert.notEqual(buttonAngle,draggedAngle,"Right rotate button did not move the actual camera");
+  await page.locator("#orbitLeft").click();
+  assert.notEqual(await angle(),buttonAngle,"Left rotate button did not move the actual camera");
+  await page.locator("#orbitAuto").click();
+  assert.equal(await page.locator("#orbitAuto").getAttribute("aria-pressed"),"true");
+  const firstSpinAngle=await angle();
+  await page.waitForTimeout(1000);
+  assert.notEqual(await angle(),firstSpinAngle,"Auto-rotate did not advance the camera");
+  await page.locator("#orbitAuto").click();
+  assert.equal(await page.locator("#orbitAuto").getAttribute("aria-pressed"),"false");
 
   assert.match(await page.locator("#trussDisplacement").innerText(),/mm/);
   await page.locator("#editSpan").fill("800");
