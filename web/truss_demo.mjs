@@ -74,6 +74,14 @@ function init3D(){
   renderer=new THREE.WebGLRenderer({antialias:true});
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
   host.appendChild(renderer.domElement);
+  // A lost WebGL context must not strand the user with dead controls.
+  renderer.domElement.addEventListener("webglcontextlost",event=>{
+    event.preventDefault();
+    renderer.domElement.dataset.disabled="true";
+    renderer.domElement.style.display="none";
+    el("trussStatic").hidden=false;
+    say("GPU 3D context lost. Software 3D rotation is available on the model.");
+  });
   group=new THREE.Group();scene.add(group);
   scene.add(new THREE.HemisphereLight(0xffffff,0x5b8377,2));
   const sun=new THREE.DirectionalLight(0xffffff,2.8);
@@ -638,8 +646,15 @@ async function launch(){
   try{
     init3D();renderMode();
   }catch(err){
-    el("evidenceBadge").textContent="3D preview unavailable";
-    say("Could not initialize 3D rotation: "+err.message+". You can still access the verified numerical case.");
+    // The dependency-free SVG viewer is already operating. Ensure any
+    // half-created hardware canvas does not obstruct its real camera controls.
+    for(const canvas of el("trussCanvas").querySelectorAll("canvas")){
+      canvas.dataset.disabled="true";
+      canvas.remove();
+    }
+    el("trussStatic").hidden=false;
+    el("evidenceBadge").textContent="ROTATABLE SOFTWARE 3D PREVIEW";
+    say("Hardware 3D unavailable ("+err.message+"). Software rotation works without WebGL.");
     showRecorded();
   }
 }
