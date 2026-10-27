@@ -583,3 +583,38 @@ body{background:#050607}
  .truss-assumptions{grid-template-columns:1fr}
  .truss-after{padding-top:36px}
 }
+
+
+/* Real modeling controls restored on the primary workbench. */
+.truss-mode-buttons{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 14px}
+.truss-mode-button{background:#17231b;border:1px solid #405847;color:#e3f3e7;
+ border-radius:10px;min-height:46px;padding:11px 19px;font-size:13px;font-weight:800}
+.truss-mode-button:hover{background:#273a2d}
+.truss-mode-button.active,.truss-mode-button[aria-pressed="true"]{background:#c5ff4a;
+ color:#091109;border-color:#c5ff4a}
+.truss-editor{background:#131e19;border:1px solid #344b3a;border-radius:13px;
+ padding:15px 18px;margin-bottom:16px}
+.truss-fields{display:grid;grid-template-columns:repeat(5,minmax(100px,1fr));gap:11px}
+.truss-fields label,.truss-import-row label{font-size:11px;font-weight:800;color:#d0e2d1;
+ display:flex;flex-direction:column;gap:6px}
+.truss-fields input,.truss-fields select,.truss-import-row input[type="file"]{
+ min-width:0;min-height:40px;background:#0a1410;color:#ecf8ee;border:1px solid #516b55;
+ border-radius:8px;padding:8px 11px;font-size:14px}
+.truss-fields input:focus,.truss-fields select:focus{outline:2px solid #c5ff4a;outline-offset:1px}
+.truss-editor-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:13px}
+.truss-editor-actions .truss-mini-button{min-height:40px}
+.truss-editor-notice{color:#abc1ae;font-size:12px;line-height:1.6;margin:12px 0 0}
+.truss-import-row{display:flex;align-items:end;flex-wrap:wrap;gap:11px}
+.truss-import-row>label{min-width:180px;flex:1}
+.truss-import-row>label>input{max-width:400px}
+.truss-import-row .truss-mini-button{min-height:40px}
+.truss-editor[hidden]{display:none}
+@media(max-width:1100px){.truss-fields{grid-template-columns:repeat(3,minmax(120px,1fr))}}
+@media(max-width:670px){
+ .truss-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .truss-mode-buttons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+ .truss-mode-button{font-size:11px;padding:7px;min-height:46px}
+ .truss-import-row{flex-direction:column;align-items:stretch}
+ .truss-import-row>*{width:100%;max-width:100%}
+ .truss-editor-actions .truss-mini-button{flex:1}
+}
