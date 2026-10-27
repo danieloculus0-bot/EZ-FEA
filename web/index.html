@@ -2,241 +2,123 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#090e0d">
-  <meta name="description" content="EZ-FEA desktop: real Gmsh and CalculiX structural analysis from STEP geometry, with a separate browser demo and verified native benchmarks.">
-  <title>EZ-FEA | Real 3D structural analysis</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#050607">
+  <meta name="description" content="Explore an actual 10-member steel Warren truss native CalculiX analysis from EZ-FEA. Inspect true CAD geometry, real mesh, load and support conditions, solver evidence and limitations.">
+  <title>EZ-FEA | Explore the real Warren truss experiment</title>
   <link rel="stylesheet" href="./styles.css">
   <script type="importmap">
-  {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}
+    {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}
   </script>
-  <script type="module" src="./main.mjs"></script>
+  <script type="module" src="./truss_demo.mjs"></script>
 </head>
-<body>
-  <a class="skip" href="#native-app">Skip to native application</a>
-  <div class="shell">
-    <header class="topbar">
-      <a class="brand" href="./" aria-label="EZ-FEA home">
-        <span class="brand-mark">EZ<span>●</span></span>
-        <span class="brand-name">EZ-FEA <small>Native structural analysis</small></span>
-      </a>
-      <div class="top-actions">
-        <span class="status-chip"><span class="status-dot"></span> Desktop beta · Real 3D solver</span>
-        <a href="https://github.com/danieloculus0-bot/EZ-FEA" target="_blank" rel="noopener noreferrer" class="link">View source <span aria-hidden="true">↗</span></a>
-      </div>
-    </header>
-    <div class="eyebrow-banner" role="note">
-      <span class="shield" aria-hidden="true">i</span>
-      <span><strong>Real solver available on desktop.</strong> The Python app runs native Gmsh + CalculiX for a single STEP solid. This static website has a separate beam demo and recorded 3D examples; it does <strong>not</strong> solve your uploaded CAD. Not for engineering sign-off.</span>
-    </div>
-    <section class="native-hero" id="native-app" aria-labelledby="native-title">
-      <div class="native-hero-main">
-        <div>
-          <p class="native-eyebrow"><span class="native-signal" aria-hidden="true"></span> REAL CAD. REAL SOLVER.</p>
-          <h1 id="native-title">Structural analysis.<br><span>Minus the clutter.</span></h1>
-          <p class="native-lead">Open a STEP part. Click what holds it. Click where the force goes. Apply a force. <strong>Solve.</strong> See actual 3D stress and movement — without an engineering software maze.</p>
-          <div class="native-actions">
-            <a class="native-cta" href="https://github.com/danieloculus0-bot/EZ-FEA#run-the-actual-ez-fea-desktop-program" target="_blank" rel="noopener noreferrer">Get the desktop app <span aria-hidden="true">↗</span></a>
-            <a class="native-secondary" href="#workspace">Explore browser demo <span aria-hidden="true">↓</span></a>
-          </div>
-          <p class="native-instruction">Run from the repository: <code>python app.py</code> · Python, Gmsh and CalculiX required</p>
-          <p class="native-instruction"><a href="https://github.com/danieloculus0-bot/EZ-FEA/blob/main/docs/examples/WARREN_TRUSS_EXAMPLE.md" target="_blank" rel="noopener noreferrer" style="color:#c5ff4a;text-decoration:underline;text-underline-offset:4px">See a real Warren truss STEP + CalculiX example</a> · solved with the separate Python multi-face backend, not this browser demo</p>
-        </div>
-        <div class="native-workflow" aria-label="Desktop workflow, for illustration only">
-          <div class="native-windowbar"><span class="native-windowdots" aria-hidden="true">● ● ●</span><strong>EZ-FEA</strong><span>NATIVE 3D</span></div>
-          <div class="native-windowcontent">
-            <span class="native-window-label">YOUR WORKFLOW</span>
-            <div class="native-step"><span>01</span><strong>Open STEP</strong><small>Real CAD faces</small></div>
-            <div class="native-step"><span>02</span><strong>Confirm suggested HOLD</strong><small>Click to remove/add; choose LOAD</small></div>
-            <div class="native-step"><span>03</span><strong>Solve</strong><small>Gmsh + CalculiX</small></div>
-            <div class="native-window-result"><span>RESULTS</span><strong>Stress · Movement</strong><small>Equilibrium checks + native files</small></div>
-          </div>
-          <p class="native-window-caption">Interface overview · not a live solver running in the browser</p>
-        </div>
-      </div>
-      <div class="native-footnotes">
-        <span><strong>Native today</strong> Single-solid STEP · planar mounting suggestions · multiple HOLD faces · real 3D results</span>
-        <span><strong>Constraints need review</strong> Round features suggest attachment, not verified bolts or fixity</span>
-        <span><strong>On this page</strong> Beam lab and archived native frame studies only</span>
-      </div>
-    </section>
-    <main id="workspace">
-      <section class="welcome">
-        <div>
-          <p class="eyebrow">INTERACTIVE BROWSER LAB · NOT THE NATIVE SOLVER</p>
-          <h2 class="lab-title">Explore how loads affect a beam.</h2>
-          <p>Try the small browser beam calculation, preview your own CAD, or inspect previously solved 3D frame results. For your own real 3D solve, use the desktop app above.</p>
-        </div>
-        <div class="welcome-side">
-          <button type="button" id="resetDemoTop" class="button button-outline">Try the example beam</button>
-        </div>
-      </section>
-      <div class="workspace-grid">
-        <aside class="sidebar" aria-label="Setup">
-          <section class="panel">
-            <div class="step-head"><span class="step-num">1</span><h2>Choose your part</h2></div>
-            <p class="hint">Start with a working example, or bring your own 3D file.</p>
-            <button type="button" id="demoBtn" class="button button-primary button-wide">Try example beam</button>
-            <div class="frame-example-picker">
-              <label for="frameSelect">Or explore a real 3D frame study</label>
-              <select id="frameSelect" disabled aria-label="Select precomputed 3D frame study">
-                <option value="">Loading solver examples…</option>
-              </select>
-              <p class="smallnote" id="frameSelectNote">Fixed loads and dimensions · real archived CalculiX results</p>
-            </div>
-            <label class="upload-area" id="dropZone" for="fileInput" tabindex="0" role="button" aria-label="Open a STEP, STL, or OBJ file">
-              <span class="upload-icon" aria-hidden="true">+</span>
-              <strong>Open your 3D part</strong>
-              <span>Choose or drop a STEP, STL, or OBJ file</span>
-              <span class="upload-caption">Model stays in your browser</span>
-              <input id="fileInput" type="file" accept=".step,.stp,.stl,.obj" aria-label="Choose a STEP, STL, or OBJ file" hidden>
-            </label>
-            <div class="part-chip" id="partInfo" aria-live="polite">Example: 150 × 25 × 10 mm beam</div>
-          </section>
-          <section class="panel">
-            <div class="step-head"><span class="step-num">2</span><h2>Show the connections</h2></div>
-            <p class="hint" id="connectionHint">The beam is held still on the left. Its far end gets pushed down.</p>
-            <div id="demoConnections" class="legend-row">
-              <span><i class="legend-dot green"></i> Fixed at left end</span>
-              <span><i class="legend-dot orange"></i> Loaded at right end</span>
-            </div>
-            <div id="frameConnections" class="frame-connections" hidden>
-              <span><i class="legend-dot green"></i> Bottom faces fixed</span>
-              <span><i class="legend-dot orange"></i> Force distributed over top face</span>
-              <p class="smallnote">Idealized restraints; not mechanical joints.</p>
-            </div>
-            <div id="customConnections" hidden>
-              <div class="button-row">
-                <button type="button" id="setFixedBtn" class="button button-outline small">Mark connection</button>
-                <button type="button" id="setLoadBtn" class="button button-outline small">Mark force</button>
-              </div>
-              <div class="selection-list" id="selectionStatus" aria-live="polite">No positions selected yet.</div>
-              <p class="smallnote">These marks are planning references, not verified mechanical boundary conditions.</p>
-            </div>
-          </section>
-          <section class="panel">
-            <div class="step-head"><span class="step-num">3</span><h2>Tell us the load</h2></div>
-            <div class="fieldgroup" id="beamLoadControls">
-              <label for="force">Downward force</label>
-              <div class="input-with-unit"><input type="number" id="force" value="100" step="10" min="-1000000000" max="1000000000"><span>N</span></div>
-              <p class="smallnote">Negative values push upward. 100 N is about 22.5 pounds-force.</p>
-            </div>
-            <div id="frameParameters" class="frame-parameters" hidden aria-live="polite"></div>
-            <div id="beamControls">
-              <details>
-                <summary>Beam dimensions <span class="expand-label">Adjust</span></summary>
-                <div class="dimensions">
-                  <label>Length (mm)<input id="length" type="number" value="150" min=".01" step="10"></label>
-                  <label>Width (mm)<input id="width" type="number" value="25" min=".01" step="5"></label>
-                  <label>Height (mm)<input id="height" type="number" value="10" min=".01" step="2"></label>
-                </div>
-              </details>
-            </div>
-            <div id="materialControls">
-            <label for="material">Material</label>
-            <select id="material">
-              <option value="a36">A36 steel (example)</option>
-              <option value="aluminum">6061-T6 aluminum (example)</option>
-              <option value="stainless">304 stainless (example)</option>
-            </select>
-            <div class="material-note" id="materialNote">Nominal properties, not a material certificate.</div>
-            </div>
-          </section>
-        </aside>
-        <section class="center-column" aria-label="3D part view">
-          <div class="viewer-panel">
-            <div class="viewer-top">
-              <div><h2 id="viewerHeading">Example beam</h2><p id="viewerSub">A real, simplified beam calculation</p></div>
-              <span class="viewer-badge" id="viewBadge">BEAM EXAMPLE</span>
-            </div>
-            <div class="viewer-stage" id="viewerStage" aria-label="Interactive 3D model area">
-              <div id="viewerCanvas" class="viewer-canvas"></div>
-              <div id="fallback" class="viewer-fallback" hidden>3D preview couldn't start. You can still calculate the example beam.</div>
-              <div id="viewerOverlay" class="viewer-overlay" aria-live="polite">
-                <div class="pill"><span class="tiny-round green"></span> Connection</div>
-                <div class="pill"><span class="tiny-round orange"></span> Force</div>
-              </div>
-              <div class="viewer-help" id="viewerHelp">Drag to rotate · Scroll to zoom</div>
-            </div>
-            <div class="viewer-footer">
-              <span id="modelStatus" role="status">Ready to test the sample beam</span>
-              <button type="button" id="resetView" class="plain-button">Reset view</button>
-            </div>
-          </div>
-          <section class="explain-box bean-panel" aria-label="BEAN engineering advisor">
-            <div class="bean-mascot">
-              <img id="beanMascot" src="https://raw.githubusercontent.com/danieloculus0-bot/BEAN/main/docs/bean-official.webp"
-                   alt="BEAN, the smiling green sprout mascot" width="92" height="92" loading="lazy">
-            </div>
-            <div class="bean-copy">
-              <div class="bean-heading"><strong>BEAN <span>ENGINEERING READ</span></strong><span class="bean-tier">Browser checks</span></div>
-              <strong id="beanHeadline" class="bean-headline">Checking your setup</strong>
-              <p id="beanAdvice" aria-live="polite">I'll inspect the actual values you calculate and point out important assumptions.</p>
-              <p class="bean-disclosure">Transparent engineering checks, not live BEAN Core reasoning or an independent safety certification.</p>
-              <details class="bean-studies" id="beanFrameStudies">
-                <summary>See 3D physics results from the real engine</summary>
-                <div id="beanStudyList" class="bean-study-list">Loading recorded solver evidence…</div>
-                <p class="bean-disclosure">Previously computed in CalculiX, not solved on this web page. All frames use idealized solid joints and one mesh size.</p>
-                <a id="beanStudySource" class="bean-study-source" href="https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/39488256233"
-                   target="_blank" rel="noopener noreferrer">Inspect the original solver run ↗</a>
-                <a class="bean-study-source" href="https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/frame-physics.yml"
-                   target="_blank" rel="noopener noreferrer">Run fresh frame physics on GitHub ↗</a>
-              </details>
-            </div>
-          </section>
-        </section>
-        <aside class="results" aria-label="Analysis result">
-          <div class="results-panel">
-            <div class="step-head"><span class="step-num dark">4</span><h2>See what happens</h2></div>
-            <p id="modeDesc" class="hint">Try the example and see real calculated displacement and bending stress.</p>
-            <button type="button" class="button button-go button-wide" id="runBtn">Calculate beam</button>
-            <p class="run-caption" id="runCaption">8 beam elements · actual numerical solve</p>
-            <div class="result-inner" id="resultInner" aria-live="polite">
-              <div id="resultPlaceholder" class="empty-results">
-                <span class="empty-icon" aria-hidden="true">◉</span>
-                <strong>Your results appear here.</strong>
-                <span>No setup wizard. No mystery buttons. Try the example.</span>
-              </div>
-              <div id="resultValues" hidden>
-                <div class="result-row"><span>Free-end movement</span><strong id="rDeflection">—</strong></div>
-                <div class="result-row"><span>Peak bending stress</span><strong id="rStress">—</strong></div>
-                <div class="result-row"><span>Nominal yield safety factor</span><strong id="rSafety">—</strong></div>
-                <div class="stress-head"><span>Percentage of nominal yield</span><span id="rPercent">—</span></div>
-                <div class="stress-track"><div class="stress-fill" id="stressFill"></div></div>
-                <p id="resultSummary" class="result-summary"></p>
-                <div class="micro-note">Simplified beam model only. Not a prediction of a complex part's failure.</div>
-              </div>
-              <div id="frameResultValues" hidden>
-                <div class="result-row"><span>Peak displacement</span><strong id="frameDeflection">—</strong></div>
-                <div class="result-row"><span>Peak von Mises stress</span><strong id="frameStress">—</strong></div>
-                <div class="result-row"><span>Force equilibrium error</span><strong id="frameBalance">—</strong></div>
-                <p id="frameResultSummary" class="result-summary"></p>
-                <p id="frameResultProvenance" class="micro-note"></p>
-                <a id="frameSolverLink" class="validation-link" target="_blank" rel="noopener noreferrer" href="https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/frame-physics.yml">Review this real solver run ↗</a>
-              </div>
-              <div id="cadNoSolver" hidden>
-                <span class="empty-icon" aria-hidden="true">◇</span>
-                <strong>3D file preview ready</strong>
-                <p>This website previews CAD only. To calculate its real 3D stress, open the STEP file in the EZ-FEA desktop app and choose actual CAD faces.</p>
-                <button id="saveSetup" class="button button-outline button-wide" type="button">Save setup as JSON</button>
-                <p class="smallnote">Saves references only. Keep the original CAD file with the setup.</p>
-              </div>
-            </div>
-          </div>
-          <div class="results-footer">
-            <details>
-              <summary>What does this calculation assume?</summary>
-              <p>Uniform rectangular beam, fully fixed left end, point load at right, single material, small elastic deflection and static loading. No shear deflection, buckling, fatigue, bolts, welds, or contact.</p>
-            </details>
-            <a href="https://github.com/danieloculus0-bot/EZ-FEA/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener noreferrer" class="validation-link">How EZ-FEA will be validated ↗</a>
-          </div>
-        </aside>
-      </div>
-      <footer class="foot">
-        <span>EZ-FEA · Real native desktop solver · Separate browser demonstrations.</span>
-        <span>Numbers matter. Assumptions matter more.</span>
-      </footer>
-    </main>
+<body class="truss-page">
+<a class="skip" href="#workspace">Skip to the real truss demonstration</a>
+<div class="shell">
+<header class="topbar">
+  <a class="brand" href="./" aria-label="EZ-FEA home">
+    <span class="brand-mark">EZ<span>●</span></span>
+    <span class="brand-name">EZ-FEA <small>Geometry first. Real physics.</small></span>
+  </a>
+  <div class="top-actions">
+    <span class="status-chip"><span class="status-dot"></span> Native 3D beta</span>
+    <a class="link" href="https://github.com/danieloculus0-bot/EZ-FEA" target="_blank" rel="noopener noreferrer">GitHub source ↗</a>
   </div>
+</header>
+<div class="eyebrow-banner" role="note">
+  <span class="shield" aria-hidden="true">i</span>
+  <span><strong>Actual CalculiX result, not a browser simulation.</strong> This demonstration reproduces a verified native Warren truss experiment. The model can be inspected, but clicking a support does not recompute stress. Real analyses run in the Python desktop application.</span>
+</div>
+<main class="truss-main">
+  <section class="truss-intro" id="native-app">
+    <div class="truss-intro-text">
+      <p class="native-eyebrow"><span class="native-signal" aria-hidden="true"></span> A REAL, REPRODUCIBLE ENGINEERING EXPERIMENT</p>
+      <h1>Meet the truss.<br><span>See what EZ-FEA actually solves.</span></h1>
+      <p>Ten steel members. Two different supports. One downward load. A real STEP solid meshed and solved in CalculiX — with the measured results below, not a toy browser calculation.</p>
+      <div class="truss-primary-actions">
+        <a class="native-cta" href="#workspace">Explore the truss <span aria-hidden="true">↓</span></a>
+        <a class="native-secondary" href="https://github.com/danieloculus0-bot/EZ-FEA#run-the-actual-ez-fea-desktop-program" target="_blank" rel="noopener noreferrer">Run EZ-FEA on your own STEP ↗</a>
+      </div>
+    </div>
+    <div class="truss-experiment-facts">
+      <div><strong>10</strong><span>solid members</span></div>
+      <div><strong>2</strong><span>support pads</span></div>
+      <div><strong>1,000 N</strong><span>downward load</span></div>
+      <p>This specimen is <b>one fused solid</b>. It is not an analysis of actual separate welds.</p>
+    </div>
+  </section>
+
+  <section id="workspace" class="truss-workbench" aria-labelledby="truss-heading">
+    <div class="truss-workbench-head">
+      <div>
+        <p class="native-eyebrow">EXPLORE THE SOLVED SPECIMEN</p>
+        <h2 id="truss-heading">10-member Warren steel truss</h2>
+        <p>Drag to rotate · scroll to zoom · click a member or fixture to inspect. <b>Inputs are fixed to the recorded solve.</b></p>
+      </div>
+      <span id="evidenceBadge" class="truss-evidence-badge">Recorded native C3D10 solve</span>
+    </div>
+    <div class="truss-columns">
+      <div class="truss-model-area">
+        <div id="trussCanvas" class="truss-canvas" role="img" aria-label="Interactive 3D truss preview; real STEP surface when published, otherwise exact member-layout reconstruction">
+          <svg id="trussStatic" viewBox="0 0 800 370" xmlns="http://www.w3.org/2000/svg" aria-label="Truss layout fallback" role="img">
+            <rect width="800" height="370" fill="#0d1615"/>
+            <g stroke="#88bea2" stroke-width="17" stroke-linecap="round">
+              <path d="M80 295H720M160 90H640"/>
+              <path d="M80 295L160 90L240 295L320 90L400 295L480 90L560 295L640 90L720 295"/>
+            </g>
+            <g fill="#6ddea4"><rect x="59" y="301" width="42" height="16"/><rect x="699" y="301" width="42" height="16"/></g>
+            <path d="M400 30V72" stroke="#c5ff4a" stroke-width="6"/>
+            <path d="M386 60l14 17 14-17" fill="none" stroke="#c5ff4a" stroke-width="6"/>
+            <text x="421" y="54" font-size="18" font-family="Arial" fill="#c5ff4a">1,000 N</text>
+            <text x="80" y="345" text-anchor="middle" font-size="15" fill="#b3c8bb">Fixed XYZ</text>
+            <text x="720" y="345" text-anchor="middle" font-size="15" fill="#b3c8bb">Slide X</text>
+          </svg>
+        </div>
+        <div class="truss-model-toolbar">
+          <div class="truss-toggle-group">
+            <button id="toggleSupports" type="button" class="truss-mini-button" aria-pressed="true"><span class="truss-indicator hold"></span> Supports</button>
+            <button id="toggleLoad" type="button" class="truss-mini-button" aria-pressed="true"><span class="truss-indicator load"></span> Force</button>
+          </div>
+          <button id="resetTrussView" type="button" class="truss-mini-button">Reset view</button>
+        </div>
+        <p id="trussViewerStatus" class="truss-status" role="status">Loading original solver case and geometry…</p>
+        <div id="selectedFeature" class="truss-selected" aria-live="polite">Select a member to inspect its construction. The native run has whole-model results, not per-member stress values.</div>
+      </div>
+      <div class="truss-result-area">
+        <div class="truss-panel-title"><strong>REAL SOLVER MEASUREMENTS</strong><span id="trussProof">Source checked</span></div>
+        <div class="truss-metric"><small>Maximum displacement</small><strong id="trussDisplacement">—</strong><span>mm · native nodal result</span></div>
+        <div class="truss-metric"><small>Peak von Mises stress</small><strong id="trussStress">—</strong><span>MPa · native integration-point result</span></div>
+        <div class="truss-row"><span>3D elements</span><strong id="trussElements">—</strong></div>
+        <div class="truss-row"><span>Force equilibrium</span><strong id="trussForceBalance">—</strong></div>
+        <div class="truss-row"><span>Moment equilibrium</span><strong id="trussMomentBalance">—</strong></div>
+        <div class="truss-row"><span>Fixture setup</span><strong>Left fixed · right slides X</strong></div>
+        <div class="truss-evidence-actions">
+          <a id="trussSourceLink" class="native-cta" href="https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/40473627691" target="_blank" rel="noopener noreferrer">Inspect solver evidence ↗</a>
+          <a class="native-secondary" href="https://github.com/danieloculus0-bot/EZ-FEA/blob/main/docs/examples/WARREN_TRUSS_EXAMPLE.md" target="_blank" rel="noopener noreferrer">Model assumptions ↗</a>
+        </div>
+        <p class="truss-disclaimer">Results are for idealized continuous steel members at one mesh size. No calculated stress-color contour, weld throat rating, bolt connection, or buckling certification is implied.</p>
+      </div>
+    </div>
+    <div class="truss-assumptions">
+      <div><span class="truss-number">01</span><strong>Imported geometry</strong><p>Ten bars, two lower pads, one upper load pad, exported as STEP and fused into one solid.</p></div>
+      <div><span class="truss-number">02</span><strong>Real fixture conditions</strong><p>Left pad fixed X/Y/Z. Right pad free in X and held in Y/Z. 1,000 N downward at the top.</p></div>
+      <div><span class="truss-number">03</span><strong>Native numerical solve</strong><p>Quadratic C3D10 tetrahedra, linear elastic steel, real support reactions and equilibrium checks.</p></div>
+    </div>
+  </section>
+
+  <section class="truss-after">
+    <div>
+      <p class="native-eyebrow">WHAT'S REAL / WHAT'S NEXT</p>
+      <h2>A more useful demonstration.</h2>
+      <p>EZ-FEA already calculates this fused-solid truss in the real native solver. It also detects round CAD features near planar mounting faces and lets you add or remove supports directly on a part. The next challenge is truly separate welded or bolted members, with connection behavior instead of assuming a continuous lump of steel.</p>
+    </div>
+    <div class="truss-after-links">
+      <a href="https://github.com/danieloculus0-bot/EZ-FEA" target="_blank" rel="noopener noreferrer">Explore the source ↗</a>
+      <a href="./beam-lab.html">Open the older beam / frame teaching lab ↗</a>
+    </div>
+  </section>
+  <footer class="foot"><span>EZ-FEA · actual Gmsh + CalculiX physics · honest limits.</span><span>The part is the interface.</span></footer>
+</main>
+</div>
 </body>
 </html>
