@@ -3,34 +3,52 @@ import { test } from "node:test";
 import { readFileSync } from "node:fs";
 
 const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+const legacy=readFileSync(new URL("../beam-lab.html",import.meta.url),"utf8");
 const styles=readFileSync(new URL("../styles.css",import.meta.url),"utf8");
+const main=readFileSync(new URL("../truss_demo.mjs",import.meta.url),"utf8");
 
-test("homepage promotes genuine native desktop, not a false browser solver",()=>{
-  assert.match(html,/id="native-app"/);
-  assert.match(html,/>Get the desktop app/);
-  assert.match(html,/python app\.py/);
-  assert.match(html,/Gmsh \+ CalculiX/);
-  assert.match(html,/single STEP solid/i);
-  assert.match(html,/does <strong>not<\/strong> solve your uploaded CAD/);
+test("primary homepage is the native Warren truss experiment, not the beam",()=>{
   assert.match(html,/id="workspace"/);
-  assert.match(html,/INTERACTIVE BROWSER LAB · NOT THE NATIVE SOLVER/);
+  assert.match(html,/10-member Warren steel truss/);
+  assert.match(html,/truss_demo\.mjs/);
+  assert.match(html,/1,000 N/);
+  assert.match(html,/Left fixed · right slides X/);
+  assert.match(html,/id="trussCanvas"/);
+  assert.match(html,/id="trussDisplacement"/);
+  assert.match(html,/id="trussStress"/);
+  assert.match(html,/id="trussSourceLink"/);
+  assert.doesNotMatch(html,/id="demoBtn"/);
+  assert.doesNotMatch(html,/Try example beam/);
 });
-test("experimental engineering modules are not advertised as complete general assembly solvers",()=>{
-  assert.match(html,/Constraints need review/);
-  assert.match(html,/not verified bolts or fixity/);
-  assert.match(html,/previously solved 3D frame results/);
-  assert.match(html,/not a live solver running in the browser/);
+test("browser does not claim to compute structural analyses from uploaded STEP",()=>{
+  assert.match(html,/not a browser simulation/);
+  assert.match(html,/clicking a support does not recompute stress/);
+  assert.match(html,/Run EZ-FEA on your own STEP/);
+  assert.match(html,/continuous steel members/);
+  assert.match(html,/No calculated stress-color contour/);
+  assert.match(html,/weld throat rating/);
+  assert.match(main,/archived native/);
+  assert.match(main,/verify SHA-256/i);
 });
-test("desktop and example actions remain real links and working native-demo controls",()=>{
-  assert.match(html,/href="https:\/\/github\.com\/danieloculus0-bot\/EZ-FEA#run-the-actual-ez-fea-desktop-program"/);
-  assert.match(html,/href="#workspace"/);
-  for(const id of ["demoBtn","runBtn","frameSelect","viewerCanvas","resultValues","cadNoSolver"]){
-    assert.ok(html.includes('id="'+id+'"'),"Existing browser demo element removed: "+id);
-  }
+test("legacy beam education is preserved off the primary homepage",()=>{
+  assert.match(html,/href="\.\/beam-lab.html"/);
+  assert.match(legacy,/id="demoBtn"/);
+  assert.match(legacy,/id="runBtn"/);
+  assert.match(legacy,/id="viewerCanvas"/);
+  assert.match(legacy,/main\.mjs/);
 });
-test("home prioritizes near-black panels with a restrained lime primary action",()=>{
-  assert.match(styles,/\.native-hero\s*\{/);
-  assert.match(styles,/background:\s*#c5ff4a/);
+test("real case provenance and specimen interaction are accessible",()=>{
+  assert.match(html,/href="https:\/\/github\.com\/danieloculus0-bot\/EZ-FEA\/actions\/runs\/40473627691"/);
+  assert.match(html,/id="toggleSupports"/);
+  assert.match(html,/id="toggleLoad"/);
+  assert.match(html,/id="resetTrussView"/);
+  assert.match(main,/STLLoader/);
+  assert.match(main,/warren_truss\.stl/);
+  assert.match(main,/SHA-256/);
+});
+test("dark restrained website remains responsive",()=>{
+  assert.match(styles,/\.truss-page\s*\{/);
   assert.match(styles,/#050607/);
-  assert.match(styles,/@media\(max-width:640px\)/);
+  assert.match(styles,/#c5ff4a/);
+  assert.match(styles,/@media\(max-width:600px\)/);
 });
