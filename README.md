@@ -6,7 +6,7 @@ EZ-FEA is part of the broader **Axiom engineering software suite**. Its future B
 
 ## Run the actual EZ-FEA desktop program
 
-**This is the working native solver interface**; the separate GitHub Pages beam lab is **not** a solver for an arbitrary STEP upload.
+**This is the working black-and-lime one-screen native solver interface**; the separate GitHub Pages beam lab is **not** a solver for an arbitrary STEP upload.
 
 1. Install **Python 3.10+**, the [Gmsh Python API](https://gmsh.info/) via `python -m pip install -r requirements.txt`, and the [CalculiX `ccx` solver](https://www.calculix.de/), available on your PATH (or set `EZFEA_CCX` to the executable path).
 2. Start it from the repository directory:
@@ -15,8 +15,8 @@ EZ-FEA is part of the broader **Axiom engineering software suite**. Its future B
    python app.py
    ```
 
-3. Press **Try demo** or **Open STEP**. The demo automatically selects opposite CAD end faces of a 100 × 10 × 10 mm beam. For your own part, select which **actual numbered CAD face** is fully fixed and which face receives the distributed X/Y/Z load. Choose mesh size and material values.
-4. Press **RUN REAL 3D ANALYSIS**. The desktop app now shows **actual maximum displacement, integration-point von Mises stress, nominal yield-to-stress ratio, force/moment equilibrium results and mesh element count**. It saves `RESULTS.txt` with the original `source.step`, native `analysis.inp/.dat/.frd`, `case.json` and `solver.log` in one results directory. Use **View report** or **Open result folder** directly in the app.
+3. Press **Use example** or **Open STEP**. The demo automatically selects opposite CAD end faces of a 100 × 10 × 10 mm beam. For your own part, select which **actual numbered CAD face** is fully fixed and which face receives the distributed X/Y/Z load. Enter a force and direction. Leave the standard material/mesh defaults or open **More settings** to adjust them.
+4. Press **SOLVE**. The desktop app now shows **actual maximum displacement, integration-point von Mises stress, nominal yield-to-stress ratio, force/moment equilibrium results and mesh element count**. It saves `RESULTS.txt` with the original `source.step`, native `analysis.inp/.dat/.frd`, `case.json` and `solver.log` in one results directory. Use **Read report** or **Open results** directly in the app.
 
 C3D10 (10-node quadratic tetrahedra) is the new default because C3D4 can be overly stiff for bending on coarse meshes. Missing Gmsh or CalculiX is detected before starting. A native solver error is never shown as a successful result; if equilibrium fails, the program explicitly marks the result **NEEDS REVIEW**, retaining the numerical evidence for investigation.
 
