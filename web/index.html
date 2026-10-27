@@ -128,9 +128,15 @@
             <button id="toggleSupports" type="button" class="truss-mini-button" aria-pressed="true"><span class="truss-indicator hold"></span> Supports</button>
             <button id="toggleLoad" type="button" class="truss-mini-button" aria-pressed="true"><span class="truss-indicator load"></span> Force</button>
           </div>
-          <button id="resetTrussView" type="button" class="truss-mini-button">Reset view</button>
+          <div class="truss-camera-actions" role="group" aria-label="Rotate 3D model">
+            <button id="orbitLeft" type="button" class="truss-mini-button" aria-label="Rotate model left">↶ Left</button>
+            <button id="orbitRight" type="button" class="truss-mini-button" aria-label="Rotate model right">Right ↷</button>
+            <button id="orbitAuto" type="button" class="truss-mini-button" aria-pressed="true">Auto-rotate: ON</button>
+            <button id="resetTrussView" type="button" class="truss-mini-button">Reset view</button>
+          </div>
         </div>
         <p id="trussViewerStatus" class="truss-status" role="status">Loading original solver case and geometry…</p>
+        <p class="truss-angle-note" id="rotationReadout" aria-live="off">3D view initializing. Drag the model, swipe on touch, or use the rotate buttons.</p>
         <div id="selectedFeature" class="truss-selected" aria-live="polite">Select a member to inspect its construction. The native run has whole-model results, not per-member stress values.</div>
       </div>
       <div class="truss-result-area">
