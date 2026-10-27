@@ -1,0 +1,50 @@
+name: Real FEA Curriculum Smoke and Geometry Isolation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "ezfea/native_learning_cases.py"
+      - "tests/test_native_learning_cases.py"
+      - ".github/workflows/native-learning-cases.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  real-native-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install actual STEP mesher and CalculiX
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y calculix-ccx libglu1-mesa
+          python -m pip install -r requirements.txt
+      - name: Check fixture split and persisted solver failures
+        run: python -m unittest discover -s tests -p test_native_learning_cases.py -v
+      - name: Generate actual STEP/C3D10 labels for two diverse axial specimens
+        run: |
+          python -m ezfea.native_learning_cases --out real_feasmoke --limit 2
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          v=json.loads(Path("real_feasmoke/native_curriculum.json").read_text())
+          assert v["cases_executed"]==2 and v["cases_planned"]==21
+          assert v["failed_or_needs_review"]==0
+          assert all(x["status"]=="measured" and x["source_step_sha256"] for x in v["cases"])
+          print("Actual native sample errors:",[round(x["reference_relative_error"],5) for x in v["cases"]])
+          PY
+      - name: Archive original STEP geometry, solver files and cases even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: EZFEA-real-training-source-smoke
+          path: real_feasmoke/
+          retention-days: 90
+          if-no-files-found: warn
