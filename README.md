@@ -4,6 +4,26 @@
 
 EZ-FEA is part of the broader **Axiom engineering software suite**. Its future BEAN integration should explain geometric evidence, help review joints, and flag questionable assumptions; the actual structural calculations remain the responsibility of the physics engine. The [educational browser demo](https://danieloculus0-bot.github.io/EZ-FEA/) is separate from native 3D solving and must never be represented as a live arbitrary-CAD solver.
 
+## Run the actual EZ-FEA desktop program
+
+**This is the working native solver interface**; the separate GitHub Pages beam lab is **not** a solver for an arbitrary STEP upload.
+
+1. Install **Python 3.10+**, the [Gmsh Python API](https://gmsh.info/) via `python -m pip install -r requirements.txt`, and the [CalculiX `ccx` solver](https://www.calculix.de/), available on your PATH (or set `EZFEA_CCX` to the executable path).
+2. Start it from the repository directory:
+
+   ```bash
+   python app.py
+   ```
+
+3. Press **Try demo** or **Open STEP**. The demo automatically selects opposite CAD end faces of a 100 × 10 × 10 mm beam. For your own part, select which **actual numbered CAD face** is fully fixed and which face receives the distributed X/Y/Z load. Choose mesh size and material values.
+4. Press **RUN REAL 3D ANALYSIS**. The desktop app now shows **actual maximum displacement, integration-point von Mises stress, nominal yield-to-stress ratio, force/moment equilibrium results and mesh element count**. It saves `RESULTS.txt` with the original `source.step`, native `analysis.inp/.dat/.frd`, `case.json` and `solver.log` in one results directory. Use **View report** or **Open result folder** directly in the app.
+
+C3D10 (10-node quadratic tetrahedra) is the new default because C3D4 can be overly stiff for bending on coarse meshes. Missing Gmsh or CalculiX is detected before starting. A native solver error is never shown as a successful result; if equilibrium fails, the program explicitly marks the result **NEEDS REVIEW**, retaining the numerical evidence for investigation.
+
+**[Dedicated true-desktop end-to-end CI](https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/desktop-app.yml)** launches the real Tk window on a virtual display, presses the demo and run controls, and verifies real Gmsh/CalculiX solver output and the UI results. This uses the existing `app.py` and `ezfea` engine—no new repo or alternate download link.
+
+**Current supported use:** one **closed solid** STEP part, one fully fixed face and one uniformly loaded face, linear isotropic static physics in N/mm/MPa. Multi-face and assembly mechanics remain available as bounded native modules, **not yet through this simple desktop screen**. Peak stress and a nominal yield ratio **do not constitute design approval**; verify CAD units, fixture realism, meshing sensitivity and independent checks.
+
 ## Product direction: from CAD assembly to structural model
 
 1. **Import an assembly:** retain distinct solids, component identifiers, geometry and candidate connection faces. Do not indiscriminately fuse components into one solid.
