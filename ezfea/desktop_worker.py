@@ -15,7 +15,7 @@ import sys
 import traceback
 from pathlib import Path
 
-from .core import Analysis, Material
+from .core import Analysis, Material, FaceConstraint, FaceLoad
 from .desktop_controller import run_desktop_case
 
 
@@ -28,16 +28,31 @@ def read_request(path):
     meta=request["case"]
     needed={"step_file","fixed_face","loaded_face","force_n",
             "mesh_size_mm","material","element_type"}
-    if set(meta)!=needed or not isinstance(meta["material"],dict):
+    optional={"connections","loads"}
+    if not (needed<=set(meta) and not set(meta)-needed-optional) or not isinstance(meta["material"],dict):
         raise ValueError("Invalid single-solid request parameters")
     if (type(meta["fixed_face"]) is not int or type(meta["loaded_face"]) is not int or
         not isinstance(meta["force_n"],list) or len(meta["force_n"])!=3):
         raise ValueError("Invalid CAD face or XYZ force fields")
+    if ("connections" in meta)!=(("loads" in meta)):
+        raise ValueError("Extended boundary conditions require supports AND loads")
     material=Material(**meta["material"])
+    connections=()
+    loads=()
+    if "connections" in meta:
+        if (not isinstance(meta["connections"],list) or
+            not isinstance(meta["loads"],list) or
+            not meta["connections"] or not meta["loads"]):
+            raise ValueError("Extended supports and loads must be nonempty lists")
+        connections=tuple(FaceConstraint(item["face"],tuple(item["axes"]))
+                          for item in meta["connections"])
+        loads=tuple(FaceLoad(item["face"],tuple(item["force_n"]))
+                    for item in meta["loads"])
     case=Analysis(
         meta["step_file"],meta["fixed_face"],meta["loaded_face"],
         tuple(meta["force_n"]),meta["mesh_size_mm"],
         material=material,element_type=meta["element_type"],
+        connections=connections,loads=loads,
     )
     case.validate()
     output_root=request["output_root"]
