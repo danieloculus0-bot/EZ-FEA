@@ -1,6 +1,12 @@
-# EZ-FEA Browser Lab
+# EZ-FEA GitHub Pages — native desktop first, browser examples below
 
-Static site intended for GitHub Pages. No application server or account needed.
+The public [EZ-FEA home page](https://danieloculus0-bot.github.io/EZ-FEA/) now leads with the **real locally run Python desktop application**, rather than presenting the educational browser workbench as the whole product. It uses a restrained black/lime palette and only two prominent choices: **Get the desktop app** or **Explore browser demo**.
+
+For the actual native single-solid STEP workflow, open the repository and run `python app.py` after installing the Gmsh Python library and native CalculiX `ccx`. The desktop UI now asks for a held CAD face, loaded CAD face, force magnitude/direction, then **SOLVE**. Mesh and material inputs are under **More settings**. The native solver runs in a child process and displays actual displacement, stress, balance checks and report files.
+
+The GitHub Pages workbench below the product introduction is a **static demonstration**, not a cloud solver. It computes only its built-in small beam problem, previews other uploaded CAD in the browser, and can show archived native frame physics from actual GitHub runs. The live CalculiX solver cannot be launched from the static browser site. The limited separate torsion and two-part contact native modules are correctly described as experimental, not as fully supported desktop assembly functions.
+
+The rest of this document describes only that browser demonstration.
 
 ## What's real in v0.2
 
