@@ -23,6 +23,19 @@ python -m ezfea.torsion_benchmarks --out runs/native_torsion --meshes 6 4
 
 [Native torsion workflow](https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/native-torsion.yml) archives source STEP, CalculiX `.inp/.dat/.frd`, mesh details, nodal-force torque audits and the numerical comparison report. Consult the actual workflow result before claiming a mesh study passed.
 
+## Actual completed benchmark — October 26, 2026
+
+[**Passing real Gmsh/CalculiX two-mesh torsion run**](https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/40422542544) and [**repeated with source STEP SHA and material/geometry provenance**](https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/40423101278).
+
+For 100 mm × 10 mm radius, E=200000 MPa, ν=.25, T=10000 N·mm, the independent closed-form twist is **0.00079577472 radians** and nominal outer-fiber shear is **6.3661977 MPa**.
+
+| Target mesh | Actual volume elements | Native fitted tip twist | Twist deviation | Reaction torque error |
+|---|---:|---:|---:|---:|
+| 6 mm | 832 | 0.00079582663 rad | 0.00652% | 0.00000211% |
+| 4 mm | 2,541 | 0.00079579787 rad | 0.00291% | 0.00000277% |
+
+The raw solver runs archive the CAD, meshing information, consistent applied-force audit, CalculiX input, full native results and reference comparison. These errors demonstrate a repeatable, **specific round-shaft benchmark**, not the stress accuracy of arbitrary torsion problems.
+
 ## Supported envelope
 
 - One continuous **solid circular** shaft, 100 mm long and 10 mm radius in the default specimen.
