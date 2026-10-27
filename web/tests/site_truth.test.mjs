@@ -16,8 +16,8 @@ test("homepage promotes genuine native desktop, not a false browser solver",()=>
   assert.match(html,/INTERACTIVE BROWSER LAB · NOT THE NATIVE SOLVER/);
 });
 test("experimental engineering modules are not advertised as complete general assembly solvers",()=>{
-  assert.match(html,/Experimental modules/);
-  assert.match(html,/reviewed two-part contact/);
+  assert.match(html,/Constraints need review/);
+  assert.match(html,/not verified bolts or fixity/);
   assert.match(html,/previously solved 3D frame results/);
   assert.match(html,/not a live solver running in the browser/);
 });
