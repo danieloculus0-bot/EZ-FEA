@@ -633,3 +633,8 @@ body{background:#050607}
   .truss-model-toolbar{align-items:stretch}
   .truss-camera-actions .truss-mini-button{font-size:12px;min-height:45px}
 }
+
+/* Genuine CPU-projected 3D truss fallback if WebGL/Three.js cannot start. */
+#trussStatic{touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+#trussStatic:active{cursor:grabbing}
+#trussStatic polygon[data-feature]{stroke-linejoin:round}
