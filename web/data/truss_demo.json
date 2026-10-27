@@ -1,0 +1,213 @@
+{
+  "schema": "ezfea.truss_browser_evidence.v1",
+  "title": "10-member Warren truss · actual native FEA",
+  "source_run": "https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/40473627691",
+  "source_commit": null,
+  "source_step_sha256": null,
+  "geometry": {
+    "type": "fused_one_solid",
+    "solid_member_section": "square solid bar; not hollow tubing",
+    "member_count": 10,
+    "span_mm": 600,
+    "rise_mm": 180,
+    "members": [
+      {
+        "id": "BOTTOM",
+        "kind": "chord",
+        "start": [
+          0,
+          0,
+          0
+        ],
+        "end": [
+          600,
+          0,
+          0
+        ],
+        "square_side_mm": 24
+      },
+      {
+        "id": "TOP",
+        "kind": "chord",
+        "start": [
+          75,
+          180,
+          0
+        ],
+        "end": [
+          525,
+          180,
+          0
+        ],
+        "square_side_mm": 24
+      },
+      {
+        "id": "W01",
+        "kind": "web",
+        "start": [
+          0,
+          0,
+          0
+        ],
+        "end": [
+          75,
+          180,
+          0
+        ],
+        "square_side_mm": 18
+      },
+      {
+        "id": "W02",
+        "kind": "web",
+        "start": [
+          75,
+          180,
+          0
+        ],
+        "end": [
+          150,
+          0,
+          0
+        ],
+        "square_side_mm": 18
+      },
+      {
+        "id": "W03",
+        "kind": "web",
+        "start": [
+          150,
+          0,
+          0
+        ],
+        "end": [
+          225,
+          180,
+          0
+        ],
+        "square_side_mm": 18
+      },
+      {
+        "id": "W04",
+        "kind": "web",
+        "start": [
+          225,
+          180,
+          0
+        ],
+        "end": [
+          300,
+          0,
+          0
+        ],
+        "square_side_mm": 18
+      },
+      {
+        "id": "W05",
+        "kind": "web",
+        "start": [
+          300,
+          0,
+          0
+        ],
+        "end": [
+          375,
+          180,
+          0
+        ],
+        "square_side_mm": 18
+      },
+      {
+        "id": "W06",
+        "kind": "web",
+        "start": [
+          375,
+          180,
+          0
+        ],
+        "end": [
+          450,
+          0,
+          0
+        ],
+        "square_side_mm": 18
+      },
+      {
+        "id": "W07",
+        "kind": "web",
+        "start": [
+          450,
+          0,
+          0
+        ],
+        "end": [
+          525,
+          180,
+          0
+        ],
+        "square_side_mm": 18
+      },
+      {
+        "id": "W08",
+        "kind": "web",
+        "start": [
+          525,
+          180,
+          0
+        ],
+        "end": [
+          600,
+          0,
+          0
+        ],
+        "square_side_mm": 18
+      }
+    ],
+    "support_pads": {
+      "left": {
+        "position_mm": [
+          0,
+          -37,
+          0
+        ],
+        "axes": "XYZ"
+      },
+      "right": {
+        "position_mm": [
+          600,
+          -37,
+          0
+        ],
+        "axes": "YZ"
+      }
+    },
+    "load_pad": {
+      "position_mm": [
+        300,
+        207,
+        0
+      ],
+      "force_n": [
+        0,
+        -1000,
+        0
+      ]
+    }
+  },
+  "native": {
+    "mesh_type": "C3D10",
+    "elements": 3595,
+    "mesh_target_mm": 16,
+    "max_displacement_mm": 0.0108109,
+    "peak_von_mises_mpa": 10.1066,
+    "force_balance_check": "pass",
+    "moment_balance_check": "pass"
+  },
+  "browser_preview": "reconstructed solid-bar specimen from the generator recipe; exact STEP surface follows CI publication",
+  "status": "archived_real_solver_result_not_live_browser_solve",
+  "limits": [
+    "Solid square-section bars, not hollow HSS/RHS tubing.",
+    "Fused junctions idealize perfectly continuous material, not real weld strength.",
+    "Single-mesh peak stress is not a verified structural safety rating.",
+    "Fixtures are idealized face restraints; not actual bearings or bolts."
+  ]
+}
