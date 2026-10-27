@@ -142,7 +142,12 @@ function updateRotationReadout(){
     "3D camera: "+angle+"° horizontal · "+tilt+
     "° vertical  ·  drag/swipe to rotate · wheel/pinch to zoom";
 }
+function hardwareViewerActive(){
+  return canvasReady && renderer?.domElement?.isConnected &&
+    renderer.domElement.style.display!=="none" && el("trussStatic").hidden;
+}
 function updateAutoRotate(enabled){
+  if(!hardwareViewerActive())return;
   autoOrbitEnabled=Boolean(enabled);
   if(orbit)orbit.autoRotate=autoOrbitEnabled;
   const button=el("orbitAuto");
@@ -150,7 +155,7 @@ function updateAutoRotate(enabled){
   button.setAttribute("aria-pressed",String(autoOrbitEnabled));
 }
 function orbitBy(amount){
-  if(!orbit||!camera)return;
+  if(!hardwareViewerActive()||!orbit||!camera)return;
   updateAutoRotate(false);
   const direction=camera.position.clone().sub(orbit.target);
   direction.applyAxisAngle(new THREE.Vector3(0,1,0),amount);
@@ -159,7 +164,7 @@ function orbitBy(amount){
   updateRotationReadout();
 }
 function orbitPitch(amount){
-  if(!orbit||!camera)return;
+  if(!hardwareViewerActive()||!orbit||!camera)return;
   updateAutoRotate(false);
   const direction=camera.position.clone().sub(orbit.target);
   const right=new THREE.Vector3().crossVectors(
@@ -603,11 +608,14 @@ async function launch(){
     visibleLoad=!visibleLoad;setVisibility();
   });
   el("resetTrussView").addEventListener("click",()=>{
+    if(!hardwareViewerActive())return;
     centerCamera();updateAutoRotate(false);
   });
   el("orbitLeft").addEventListener("click",()=>orbitBy(-.34));
   el("orbitRight").addEventListener("click",()=>orbitBy(.34));
-  el("orbitAuto").addEventListener("click",()=>updateAutoRotate(!autoOrbitEnabled));
+  el("orbitAuto").addEventListener("click",()=>{
+    if(hardwareViewerActive())updateAutoRotate(!autoOrbitEnabled);
+  });
   el("restoreTruss").addEventListener("click",restoreTruss);
   el("downloadSetup").addEventListener("click",saveTruss);
   el("downloadMesh").addEventListener("click",saveMesh);
