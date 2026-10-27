@@ -183,8 +183,8 @@ def save_readable_report(folder,record,summary):
             not isinstance(forces,list) or not forces):
             raise ValueError("Extended native report missing actual support/load definitions")
         support_lines=[
-            f"CAD face {item['face']}: restrained global directions {','.join(
-                'XYZ'[axis-1] for axis in item['axes'])}"
+            "CAD face {}: restrained global directions {}".format(
+                item["face"],",".join("XYZ"[axis-1] for axis in item["axes"]))
             for item in supports
         ]
         load_lines=[
