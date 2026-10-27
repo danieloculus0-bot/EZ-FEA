@@ -69,6 +69,11 @@
         <label>Chord square (mm)<input id="editChord" type="number" min="5" max="150" step="2" value="24"></label>
         <label>Web square (mm)<input id="editWeb" type="number" min="5" max="150" step="2" value="18"></label>
         <label>Downward load (N)<input id="editLoad" type="number" min="0" max="1000000" step="100" value="1000"></label>
+        <label>Young's E (MPa)<input id="editYoung" type="number" min="1" max="1000000" step="1000" value="200000"></label>
+        <label>Poisson ratio<input id="editPoisson" type="number" min="-0.99" max="0.499" step="0.01" value="0.26"></label>
+        <label>Nominal yield (MPa)<input id="editYield" type="number" min="1" max="1000000" step="10" value="250"></label>
+        <label>Left support<select id="editLeftSupport"><option value="XYZ">Fixed XYZ</option><option value="YZ">Slide X (hold YZ)</option><option value="XZ">Slide Y (hold XZ)</option><option value="XY">Slide Z (hold XY)</option></select></label>
+        <label>Right support<select id="editRightSupport"><option value="YZ">Slide X (hold YZ)</option><option value="XYZ">Fixed XYZ</option><option value="XZ">Slide Y (hold XZ)</option><option value="XY">Slide Z (hold XY)</option></select></label>
       </div>
       <div class="truss-editor-actions">
         <button id="restoreTruss" type="button" class="truss-mini-button">Restore solved example</button>
