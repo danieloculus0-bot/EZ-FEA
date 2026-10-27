@@ -89,6 +89,53 @@ try{
 
   await page.screenshot({path:"browser-functional-proof.png",fullPage:true});
   assert.deepEqual(errors,[],"Browser threw uncaught runtime errors");
+
+  // Reproduce the actual failed-user class: browser has no usable WebGL.
+  // In the old implementation the decorative SVG remained static and every
+  // rotation control silently did nothing. The new fallback MUST orbit.
+  const noGpu=await browser.newContext({viewport:{width:1280,height:850}});
+  await noGpu.addInitScript(()=>{
+    const original=HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext=function(type,...args){
+      if(/webgl/i.test(String(type)))return null;
+      return original.call(this,type,...args);
+    };
+  });
+  const software=await noGpu.newPage();
+  await software.goto(base,{waitUntil:"networkidle",timeout:55000});
+  await software.locator("#trussStatic polygon[data-feature]").first().waitFor({timeout:25000});
+  assert.equal(await software.locator("#trussCanvas canvas").count(),0,
+    "The no-GPU scenario unexpectedly created a functional WebGL canvas");
+  const svg=software.locator("#trussStatic");
+  const angle=async()=>software.locator("#rotationReadout").textContent();
+  const beforeFallback=await angle();
+  await software.locator("#orbitRight").click();
+  const afterFallback=await angle();
+  assert.notEqual(afterFallback,beforeFallback,
+    "No-WebGL viewer right rotation button failed to change actual yaw");
+  const snapshot=hash(await svg.screenshot());
+  await software.locator("#orbitLeft").click();
+  const returned=hash(await svg.screenshot());
+  assert.notEqual(snapshot,returned,
+    "No-WebGL CAD polygons did not actually rotate after pressing left");
+  await software.locator("#orbitAuto").click();
+  assert.equal(await software.locator("#orbitAuto").getAttribute("aria-pressed"),"true");
+  const firstAuto=await angle();
+  await software.waitForTimeout(800);
+  assert.notEqual(await angle(),firstAuto,
+    "No-WebGL auto rotation does not move the model");
+  await software.locator("#orbitAuto").click();
+  const bounds=await svg.boundingBox();
+  assert.ok(bounds?.width>300);
+  await software.mouse.move(bounds.x+bounds.width*.48,bounds.y+bounds.height*.5);
+  await software.mouse.down();
+  await software.mouse.move(bounds.x+bounds.width*.7,bounds.y+bounds.height*.6,{steps:10});
+  await software.mouse.up();
+  assert.notEqual(await angle(),firstAuto,
+    "No-WebGL pointer drag does not affect model orientation");
+  await software.screenshot({path:"browser-software-3d-fallback.png",fullPage:true});
+  await noGpu.close();
+  console.log("PASS: Forced-WebGL-failure still displays true rotatable 3D truss and working buttons, pointer drag and automatic orbit.");
   console.log("PASS: WebGL actually rotates, truss edits invalidate results, native case restores, beam recalculates, uploaded STL rotates.");
 }finally{
   await browser.close();
