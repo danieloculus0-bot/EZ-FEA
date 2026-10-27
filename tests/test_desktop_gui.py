@@ -28,6 +28,43 @@ class DesktopEndToEndTests(unittest.TestCase):
                 self.assertGreaterEqual(len(app.faces),6)
                 self.assertNotEqual(app.fix_box.current(),app.load_box.current())
                 self.assertEqual(app.element_type.get(),"C3D10")
+                # The 3D display is actual tessellated OCC surface data, not
+                # an invented rectangle. Wait for its separate Gmsh worker.
+                preview_timeout=time.monotonic()+65
+                while not app.picker.triangles and time.monotonic()<preview_timeout:
+                    app.update()
+                    time.sleep(.1)
+                self.assertTrue(app.picker.triangles,
+                    f"Native CAD preview failed: {app.picker.info.get()}")
+                self.assertEqual({tag for tag,_ in app.picker.triangles},
+                                 {f.tag for f in app.faces})
+                app.picker.choose("fixed")
+                app.update()
+                # Exercise an actual on-screen click (pick a frontmost face
+                # whose centroid is not hidden by another surface patch).
+                from types import SimpleNamespace
+                from ezfea.desktop_preview import face_under_cursor
+                visible=None
+                for _,tag,tri in reversed(app.picker.painted):
+                    px=sum(v[0] for v in tri)/3
+                    py=sum(v[1] for v in tri)/3
+                    if face_under_cursor(app.picker.painted,px,py)==tag:
+                        visible=(tag,px,py)
+                        break
+                self.assertIsNotNone(visible)
+                tag,px,py=visible
+                original_fixed=app.fix_box.current()
+                original_loaded=app.load_box.current()
+                # Select an exposed face distinct from the preset load face.
+                if tag!=app.faces[original_loaded].tag:
+                    evt=SimpleNamespace(x=px,y=py)
+                    app.picker._down(evt)
+                    app.picker._up(evt)
+                    self.assertEqual(app.faces[app.fix_box.current()].tag,tag)
+                # Restore demo fixture for independent mechanical verification.
+                app.fix_box.current(original_fixed)
+                app.load_box.current(original_loaded)
+                app._sync_faces()
                 app.run()
                 self.assertTrue(app.busy,"RUN control did not actually start")
                 end=time.monotonic()+150
