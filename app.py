@@ -1,7 +1,7 @@
-"""EZ-FEA desktop: pick a STEP, support it, load it, and see REAL 3D results.
+"""EZ-FEA desktop. One-screen native STEP analysis, no duplicate demo solver.
 
-Launch from the repository root: python app.py
-Local desktop program; native Gmsh and CalculiX are required to solve.
+Open part -> hold face -> loaded face -> force -> SOLVE -> results.
+Advanced material and mesh options remain accessible but out of the way.
 """
 from __future__ import annotations
 
@@ -15,21 +15,28 @@ from ezfea.mesh import inspect_step
 from ezfea.desktop_controller import (
     build_analysis, open_result_folder, preflight, run_native_child_process,
 )
+from ezfea.desktop_presentation import PALETTE, DIRECTIONS, force_components, brief_native_result
+
+C=PALETTE
 
 
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("EZ-FEA | Structural Analysis")
-        self.geometry("870x770")
-        self.minsize(720,660)
+        self.geometry("880x760")
+        self.minsize(690,690)
+        self.configure(bg=C["background"])
         self.responses=queue.Queue()
         self.filename=""
         self.faces=[]
         self.busy=False
         self.latest=None
+
         self.fixed=tk.StringVar()
         self.loaded=tk.StringVar()
+        self.force=tk.StringVar(value="100")
+        self.direction=tk.StringVar(value=DIRECTIONS[0])
         self.mesh=tk.StringVar(value="7")
         self.fx=tk.StringVar(value="0")
         self.fy=tk.StringVar(value="-100")
@@ -38,115 +45,218 @@ class App(tk.Tk):
         self.nu=tk.StringVar(value="0.26")
         self.yield_mpa=tk.StringVar(value="250")
         self.element_type=tk.StringVar(value="C3D10")
-        self.status=tk.StringVar(value="Choose a STEP part or open the demo.")
+        self.status=tk.StringVar(value="Open a STEP part or choose the example.")
+        self.part_name=tk.StringVar(value="No part loaded")
+        self.part_detail=tk.StringVar(value="Real solid STEP geometry  •  N / mm / MPa")
+        self.advanced_open=False
+        self.activity_open=False
         self.result_vars={
             key:tk.StringVar(value="—")
             for key in ("headline","max_displacement","max_stress",
                         "yield_ratio","force_balance","moment_balance",
                         "elements","element_type")
         }
+        self._styles()
         self._build()
         self.after(150,self._poll)
         missing=preflight()
-        if missing:
-            self._log("Native solver setup required:")
-            for issue in missing:self._log("• "+issue)
-        else:self._log("Gmsh and CalculiX found. Native solving available.")
-        self._log("Supports: one continuous STEP solid and a fully fixed face.")
+        self._log("Native solver detected." if not missing else
+                  "Solver setup: "+" | ".join(missing))
+
+    def _styles(self):
+        style=ttk.Style(self)
+        if "clam" in style.theme_names():style.theme_use("clam")
+        style.configure(".",background=C["background"],foreground=C["text"],
+                        font=("Segoe UI",10))
+        style.configure("TFrame",background=C["background"])
+        style.configure("Panel.TFrame",background=C["panel"])
+        style.configure("TLabel",background=C["background"],foreground=C["text"])
+        style.configure("Panel.TLabel",background=C["panel"],foreground=C["text"])
+        style.configure("Muted.TLabel",background=C["background"],foreground=C["muted"])
+        style.configure("PanelMuted.TLabel",background=C["panel"],foreground=C["muted"])
+        style.configure("Brand.TLabel",background=C["background"],foreground=C["text"],
+                        font=("Segoe UI",27,"bold"))
+        style.configure("Large.TLabel",background=C["panel"],foreground=C["text"],
+                        font=("Segoe UI",13,"bold"))
+        style.configure("Metric.TLabel",background=C["panel"],foreground=C["accent"],
+                        font=("Segoe UI",20,"bold"))
+        style.configure("PanelTitle.TLabel",background=C["panel"],foreground=C["text"],
+                        font=("Segoe UI",11,"bold"))
+        style.configure("Accent.TButton",background=C["accent"],foreground=C["background"],
+                        bordercolor=C["accent"],focuscolor=C["accent"],
+                        font=("Segoe UI",13,"bold"),padding=(28,14))
+        style.map("Accent.TButton",
+                  background=[("disabled",C["border"]),("active",C["accent_hover"])],
+                  foreground=[("disabled",C["muted"]),("active",C["background"])])
+        style.configure("Quiet.TButton",background=C["panel_high"],foreground=C["text"],
+                        bordercolor=C["border"],font=("Segoe UI",10,"bold"),
+                        padding=(14,9))
+        style.map("Quiet.TButton",background=[("active",C["border"])])
+        style.configure("TEntry",fieldbackground=C["panel_high"],foreground=C["text"],
+                        insertcolor=C["text"],bordercolor=C["border"],padding=9)
+        style.configure("TCombobox",fieldbackground=C["panel_high"],background=C["panel_high"],
+                        foreground=C["text"],arrowcolor=C["accent"],
+                        bordercolor=C["border"],padding=8)
+        style.map("TCombobox",fieldbackground=[("readonly",C["panel_high"])],
+                  foreground=[("readonly",C["text"])],
+                  selectbackground=[("readonly",C["panel_high"])],
+                  selectforeground=[("readonly",C["text"])])
+        self.option_add("*TCombobox*Listbox.background",C["panel_high"])
+        self.option_add("*TCombobox*Listbox.foreground",C["text"])
+        self.option_add("*TCombobox*Listbox.selectBackground",C["border"])
+        self.option_add("*TCombobox*Listbox.selectForeground",C["accent"])
+
+    def _panel(self,parent,padx=18,pady=15):
+        frame=tk.Frame(parent,bg=C["panel"],highlightthickness=1,
+                       highlightbackground=C["border"],padx=padx,pady=pady)
+        frame.pack(fill="x",pady=(0,12))
+        return frame
+
+    def _label(self,parent,text,muted=False,bold=False):
+        return tk.Label(parent,text=text,bg=C["panel"],
+                        fg=C["muted"] if muted else C["text"],
+                        font=("Segoe UI",10,"bold" if bold else "normal"),
+                        anchor="w")
 
     def _build(self):
-        style=ttk.Style(self)
-        if "clam" in style.theme_names():
-            style.theme_use("clam")
-        style.configure("Title.TLabel",font=("Segoe UI",21,"bold"))
-        style.configure("Heading.TLabel",font=("Segoe UI",11,"bold"))
-        style.configure("Big.TButton",font=("Segoe UI",11,"bold"),padding=(14,11))
-        style.configure("Status.TLabel",font=("Segoe UI",10,"bold"))
-        root=ttk.Frame(self,padding=16)
+        root=tk.Frame(self,bg=C["background"],padx=23,pady=16)
         root.pack(fill="both",expand=True)
-        ttk.Label(root,text="EZ-FEA",style="Title.TLabel").pack(anchor="w")
-        ttk.Label(root,text="1. Open part     2. Select support and load     3. Solve     4. Read results").pack(anchor="w",pady=(0,8))
-        ttk.Label(root,text="Single-part, linear-static 3D analysis · N / mm / MPa · Not validated for design sign-off",
-                  foreground="#9f472a").pack(anchor="w",pady=(0,10))
 
-        file_row=ttk.Frame(root)
-        file_row.pack(fill="x",pady=(0,9))
-        self.open_button=ttk.Button(file_row,text="Open STEP",command=self.open_file)
+        head=tk.Frame(root,bg=C["background"])
+        head.pack(fill="x",pady=(0,14))
+        brand=tk.Frame(head,bg=C["background"])
+        brand.pack(side="left")
+        ttk.Label(brand,text="EZ-FEA",style="Brand.TLabel").pack(anchor="w")
+        ttk.Label(brand,text="REAL 3D ANALYSIS, WITHOUT THE CLUTTER",
+                  style="Muted.TLabel").pack(anchor="w")
+        tk.Label(head,text="NATIVE 3D  •  BETA",bg=C["panel_high"],fg=C["accent"],
+                 font=("Segoe UI",9,"bold"),padx=12,pady=7).pack(side="right",anchor="n",pady=7)
+
+        source=self._panel(root)
+        bar=tk.Frame(source,bg=C["panel"])
+        bar.pack(fill="x")
+        self.open_button=ttk.Button(bar,text="Open STEP",style="Quiet.TButton",command=self.open_file)
         self.open_button.pack(side="left")
-        self.demo_button=ttk.Button(file_row,text="Try demo",command=self.demo)
-        self.demo_button.pack(side="left",padx=9)
-        self.path_label=ttk.Label(file_row,text="No part loaded")
-        self.path_label.pack(side="left",padx=9)
+        self.demo_button=ttk.Button(bar,text="Use example",style="Quiet.TButton",command=self.demo)
+        self.demo_button.pack(side="left",padx=8)
+        ttk.Label(source,textvariable=self.part_name,style="Large.TLabel").pack(anchor="w",pady=(14,2))
+        ttk.Label(source,textvariable=self.part_detail,style="PanelMuted.TLabel").pack(anchor="w")
 
-        region=ttk.LabelFrame(root,text="1 · CAD faces",padding=10)
-        region.pack(fill="x",pady=5)
-        ttk.Label(region,text="Fixed face (all three translations restrained)").pack(anchor="w")
-        self.fix_box=ttk.Combobox(region,textvariable=self.fixed,state="readonly")
-        self.fix_box.pack(fill="x",pady=(2,6))
-        ttk.Label(region,text="Loaded face (total force spread over the face)").pack(anchor="w")
-        self.load_box=ttk.Combobox(region,textvariable=self.loaded,state="readonly")
-        self.load_box.pack(fill="x",pady=(2,1))
-        ttk.Label(region,text="CAD face IDs are taken from the imported STEP, not the browser preview.",
-                  foreground="#606060").pack(anchor="w")
+        setup=self._panel(root)
+        title=tk.Frame(setup,bg=C["panel"])
+        title.pack(fill="x",pady=(0,12))
+        ttk.Label(title,text="SETUP",style="PanelTitle.TLabel").pack(side="left")
+        tk.Label(title,text="1 / 2",bg=C["panel"],fg=C["muted"],
+                 font=("Segoe UI",9)).pack(side="right")
+        faces=tk.Frame(setup,bg=C["panel"])
+        faces.pack(fill="x")
+        faces.columnconfigure(0,weight=1,uniform="faces")
+        faces.columnconfigure(1,weight=1,uniform="faces")
+        self._label(faces,"Held face",bold=True).grid(row=0,column=0,sticky="w",padx=(0,9))
+        self._label(faces,"Loaded face",bold=True).grid(row=0,column=1,sticky="w")
+        self.fix_box=ttk.Combobox(faces,textvariable=self.fixed,state="readonly")
+        self.fix_box.grid(row=1,column=0,sticky="ew",padx=(0,9),pady=(5,12))
+        self.load_box=ttk.Combobox(faces,textvariable=self.loaded,state="readonly")
+        self.load_box.grid(row=1,column=1,sticky="ew",pady=(5,12))
+        force_row=tk.Frame(setup,bg=C["panel"])
+        force_row.pack(fill="x")
+        force_row.columnconfigure(0,weight=1)
+        force_row.columnconfigure(1,weight=2)
+        self._label(force_row,"Force (N)",bold=True).grid(row=0,column=0,sticky="w",padx=(0,9))
+        self._label(force_row,"Direction",bold=True).grid(row=0,column=1,sticky="w")
+        ttk.Entry(force_row,textvariable=self.force).grid(row=1,column=0,sticky="ew",padx=(0,9),pady=(5,0))
+        ttk.Combobox(force_row,textvariable=self.direction,values=DIRECTIONS,
+                     state="readonly").grid(row=1,column=1,sticky="ew",pady=(5,0))
+        ttk.Label(setup,text="Select actual CAD faces. The entire chosen face receives the force.",
+                  style="PanelMuted.TLabel").pack(anchor="w",pady=(10,0))
 
-        settings=ttk.LabelFrame(root,text="2 · Force, material and mesh",padding=10)
-        settings.pack(fill="x",pady=7)
-        fields=[
-            ("Fx (N)",self.fx),("Fy (N)",self.fy),("Fz (N)",self.fz),
+        advanced=tk.Frame(root,bg=C["background"])
+        advanced.pack(fill="x",pady=(0,12))
+        self.advanced_button=ttk.Button(advanced,text="More settings  ▾",
+                                        style="Quiet.TButton",command=self.toggle_advanced)
+        self.advanced_button.pack(anchor="w")
+        self.advanced_frame=tk.Frame(advanced,bg=C["panel"],padx=15,pady=12,
+                                     highlightthickness=1,highlightbackground=C["border"])
+        grid=tk.Frame(self.advanced_frame,bg=C["panel"])
+        grid.pack(fill="x")
+        settings=[
             ("Mesh size (mm)",self.mesh),("Young's E (MPa)",self.e),
-            ("Poisson's ratio",self.nu),("Nominal yield (MPa)",self.yield_mpa)
+            ("Poisson ratio",self.nu),("Yield (MPa)",self.yield_mpa),
         ]
-        for i,(name,var) in enumerate(fields):
-            cell=ttk.Frame(settings)
-            cell.grid(row=i//4,column=i%4,sticky="ew",padx=4,pady=5)
-            ttk.Label(cell,text=name).pack(anchor="w")
-            ttk.Entry(cell,textvariable=var,width=14).pack(fill="x",pady=(2,0))
-        ecell=ttk.Frame(settings)
-        ecell.grid(row=1,column=3,sticky="ew",padx=4,pady=5)
-        ttk.Label(ecell,text="3D elements").pack(anchor="w")
-        ttk.Combobox(ecell,textvariable=self.element_type,
-                     values=("C3D10","C3D4"),state="readonly",width=13).pack(fill="x",pady=(2,0))
-        for i in range(4):settings.grid_columnconfigure(i,weight=1)
+        for i,(label,var) in enumerate(settings):
+            cell=tk.Frame(grid,bg=C["panel"])
+            cell.grid(row=i//2,column=i%2,sticky="ew",padx=(0,12),pady=5)
+            self._label(cell,label).pack(anchor="w")
+            ttk.Entry(cell,textvariable=var).pack(fill="x",pady=(4,0))
+        for i in range(2):grid.grid_columnconfigure(i,weight=1)
+        row=tk.Frame(self.advanced_frame,bg=C["panel"])
+        row.pack(fill="x",pady=(7,0))
+        self._label(row,"Element mesh").pack(side="left")
+        ttk.Combobox(row,textvariable=self.element_type,values=("C3D10","C3D4"),
+                     state="readonly",width=10).pack(side="left",padx=13)
+        self._label(row,"C3D10 recommended for bending",muted=True).pack(side="left")
 
-        go=ttk.Frame(root)
-        go.pack(fill="x",pady=9)
-        self.run_button=ttk.Button(go,text="RUN REAL 3D ANALYSIS",style="Big.TButton",command=self.run)
+        go=tk.Frame(root,bg=C["background"])
+        go.pack(fill="x",pady=(0,12))
+        self.run_button=ttk.Button(go,text="SOLVE",style="Accent.TButton",command=self.run)
         self.run_button.pack(side="left")
-        ttk.Label(go,textvariable=self.status,style="Status.TLabel",
-                  wraplength=450).pack(side="left",padx=12)
+        tk.Label(go,textvariable=self.status,bg=C["background"],fg=C["muted"],
+                 font=("Segoe UI",10),wraplength=490,justify="left",
+                 anchor="w").pack(side="left",padx=16)
 
-        result_frame=ttk.LabelFrame(root,text="3 · Actual solver results",padding=11)
-        result_frame.pack(fill="x",pady=5)
-        ttk.Label(result_frame,textvariable=self.result_vars["headline"],
-                  style="Heading.TLabel").pack(anchor="w",pady=(0,6))
-        table=ttk.Frame(result_frame)
-        table.pack(fill="x")
-        labels=[
-            ("Maximum movement","max_displacement"),
-            ("Peak von Mises stress","max_stress"),
-            ("Nominal yield/stress ratio*","yield_ratio"),
-            ("Force equilibrium","force_balance"),
-            ("Moment equilibrium","moment_balance"),
-            ("Mesh elements","elements"),
-        ]
-        for i,(label,key) in enumerate(labels):
-            ttk.Label(table,text=label).grid(row=i,column=0,sticky="w",pady=2)
-            ttk.Label(table,textvariable=self.result_vars[key],
-                      style="Heading.TLabel").grid(row=i,column=1,sticky="w",padx=16,pady=2)
-        ttk.Label(result_frame,text="*Ratio is not a safety certification. Peak stress may require mesh convergence.",
-                  foreground="#7c5525").pack(anchor="w",pady=(7,1))
-        buttons=ttk.Frame(result_frame)
-        buttons.pack(fill="x",pady=(7,0))
-        self.folder_button=ttk.Button(buttons,text="Open result folder",
-                                      command=self.show_folder,state="disabled")
+        results=self._panel(root,pady=16)
+        row=tk.Frame(results,bg=C["panel"])
+        row.pack(fill="x")
+        ttk.Label(row,text="RESULTS",style="PanelTitle.TLabel").pack(side="left")
+        self.result_state=tk.Label(row,text="NO ANALYSIS",bg=C["panel_high"],fg=C["muted"],
+                                   font=("Segoe UI",9,"bold"),padx=11,pady=5)
+        self.result_state.pack(side="right")
+        summary=tk.Frame(results,bg=C["panel"])
+        summary.pack(fill="x",pady=(16,13))
+        for index,(caption,key) in enumerate((
+            ("MAX MOVEMENT","max_displacement"),("PEAK STRESS","max_stress"),
+        )):
+            tile=tk.Frame(summary,bg=C["panel_high"],padx=14,pady=11)
+            tile.grid(row=0,column=index,sticky="ew",padx=(0,8) if index==0 else (8,0))
+            ttk.Label(tile,text=caption,style="Muted.TLabel").pack(anchor="w")
+            tk.Label(tile,textvariable=self.result_vars[key],bg=C["panel_high"],
+                     fg=C["accent"],font=("Segoe UI",19,"bold")).pack(anchor="w",pady=(4,0))
+        summary.columnconfigure(0,weight=1,uniform="metrics")
+        summary.columnconfigure(1,weight=1,uniform="metrics")
+        self.balance_label=tk.Label(results,bg=C["panel"],fg=C["muted"],anchor="w",
+                                    font=("Segoe UI",10),text="Force & moment checks will appear here.")
+        self.balance_label.pack(fill="x")
+        buttons=tk.Frame(results,bg=C["panel"])
+        buttons.pack(fill="x",pady=(15,0))
+        self.folder_button=ttk.Button(buttons,text="Open results",style="Quiet.TButton",
+                                     command=self.show_folder,state="disabled")
         self.folder_button.pack(side="left")
-        self.report_button=ttk.Button(buttons,text="View report",command=self.show_report,
-                                      state="disabled")
-        self.report_button.pack(side="left",padx=8)
+        self.report_button=ttk.Button(buttons,text="Read report",style="Quiet.TButton",
+                                     command=self.show_report,state="disabled")
+        self.report_button.pack(side="left",padx=9)
+        ttk.Label(results,text="Single solid · linear elastic · check fixtures, mesh and units before design use",
+                  style="PanelMuted.TLabel").pack(anchor="w",pady=(13,0))
 
-        ttk.Label(root,text="Activity",style="Heading.TLabel").pack(anchor="w",pady=(7,3))
-        self.logbox=tk.Text(root,height=5,wrap="word",state="disabled")
+        self.activity_button=ttk.Button(root,text="Activity log  ▾",style="Quiet.TButton",
+                                        command=self.toggle_activity)
+        self.activity_button.pack(anchor="w")
+        self.activity_frame=tk.Frame(root,bg=C["background"])
+        self.logbox=tk.Text(self.activity_frame,height=5,wrap="word",state="disabled",
+                            bg=C["panel"],fg=C["muted"],insertbackground=C["text"],
+                            relief="flat",padx=12,pady=9,font=("Consolas",9))
         self.logbox.pack(fill="both",expand=True)
+
+    def toggle_advanced(self):
+        self.advanced_open=not self.advanced_open
+        self.advanced_button.configure(text="More settings  ▴" if self.advanced_open else "More settings  ▾")
+        if self.advanced_open:self.advanced_frame.pack(fill="x",pady=(9,0))
+        else:self.advanced_frame.pack_forget()
+
+    def toggle_activity(self):
+        self.activity_open=not self.activity_open
+        self.activity_button.configure(text="Activity log  ▴" if self.activity_open else "Activity log  ▾")
+        if self.activity_open:self.activity_frame.pack(fill="both",expand=True,pady=(7,0))
+        else:self.activity_frame.pack_forget()
 
     def _log(self,line):
         self.logbox.configure(state="normal")
@@ -158,13 +268,15 @@ class App(tk.Tk):
         self.latest=None
         self.folder_button.configure(state="disabled")
         self.report_button.configure(state="disabled")
+        self.result_state.configure(text="NO ANALYSIS",fg=C["muted"])
+        self.balance_label.configure(text="Force & moment checks will appear here.",fg=C["muted"])
         for var in self.result_vars.values():var.set("—")
 
     def _set_busy(self,value):
         self.busy=value
         state="disabled" if value else "normal"
-        for button in (self.run_button,self.open_button,self.demo_button):
-            button.configure(state=state)
+        for btn in (self.run_button,self.open_button,self.demo_button):
+            btn.configure(state=state)
         for combo in (self.fix_box,self.load_box):
             combo.configure(state="disabled" if value else "readonly")
 
@@ -178,10 +290,10 @@ class App(tk.Tk):
                 right=max(range(len(self.faces)),key=lambda i:self.faces[i].center_mm[0])
                 self.fix_box.current(left)
                 self.load_box.current(right)
-                self.status.set("Demo selected. Press RUN REAL 3D ANALYSIS.")
-                self._log("Demo 100 × 10 × 10 mm STEP: fully fixed left, 100 N downward at right.")
+                self.status.set("Example ready. Press SOLVE.")
+                self._log("Example: real 100 × 10 × 10 mm STEP, left fixed, 100 N down.")
         except Exception as exc:
-            messagebox.showerror("Demo could not open",str(exc))
+            messagebox.showerror("Example could not open",str(exc))
 
     def open_file(self):
         if self.busy:return
@@ -205,39 +317,43 @@ class App(tk.Tk):
         self.loaded.set("")
         self.fix_box["values"]=[f.label for f in faces]
         self.load_box["values"]=[f.label for f in faces]
-        self.path_label.configure(text=Path(selected).name)
-        self.status.set("Choose the fixed face and loaded face.")
-        self._log(f"Imported {len(faces)} CAD faces from {self.filename}.")
+        self.part_name.set(Path(selected).name)
+        self.part_detail.set(f"{len(faces)} CAD faces loaded  •  STEP  •  mm geometry")
+        self.status.set("Select held face and loaded face.")
+        self._log(f"Imported {len(faces)} real CAD faces from {self.filename}.")
         return True
 
     def run(self):
         if self.busy:return
         try:
             values={
-                "fx":self.fx.get(),"fy":self.fy.get(),"fz":self.fz.get(),
+                "fx":"0","fy":"0","fz":"0",
                 "mesh":self.mesh.get(),"e":self.e.get(),"nu":self.nu.get(),
-                "yield_mpa":self.yield_mpa.get(),
-                "element_type":self.element_type.get(),
+                "yield_mpa":self.yield_mpa.get(),"element_type":self.element_type.get(),
             }
+            fx,fy,fz=force_components(self.force.get(),self.direction.get())
+            self.fx.set(str(fx))
+            self.fy.set(str(fy))
+            self.fz.set(str(fz))
+            values.update(fx=fx,fy=fy,fz=fz)
             case=build_analysis(self.filename,self.faces,
                                 self.fix_box.current(),self.load_box.current(),values)
             missing=preflight()
             if missing:raise ValueError("\n".join(missing))
         except (ValueError,TypeError) as exc:
-            self.status.set("Check setup inputs.")
-            messagebox.showerror("Cannot start analysis",str(exc))
+            self.status.set("Check your setup.")
+            messagebox.showerror("Cannot solve",str(exc))
             return
         self._clear_result()
         self._set_busy(True)
-        self.status.set("Meshing and solving the real STEP geometry…")
-        self._log(f"Starting Gmsh + CalculiX: {case.element_type}, {case.mesh_size_mm:g} mm mesh.")
+        self.status.set("Meshing and solving…")
+        self.result_state.configure(text="SOLVING",fg=C["accent"])
+        self._log(f"Real Gmsh + CalculiX: {case.element_type}, {case.mesh_size_mm:g} mm.")
         threading.Thread(target=self._solve,args=(case,),daemon=True).start()
 
     def _solve(self,case):
-        try:
-            self.responses.put(("ok",run_native_child_process(case)))
-        except Exception as exc:
-            self.responses.put(("failed",str(exc)))
+        try:self.responses.put(("ok",run_native_child_process(case)))
+        except Exception as exc:self.responses.put(("failed",str(exc)))
 
     def _poll(self):
         try:
@@ -250,18 +366,20 @@ class App(tk.Tk):
                         var.set(value["summary"].get(key,"—"))
                     self.folder_button.configure(state="normal")
                     self.report_button.configure(state="normal")
-                    status=value["summary"]["status"]
-                    if status=="completed":
-                        self.status.set("Finished · force and moment checks passed.")
-                        self._log("SOLVED: "+str(value["folder"]))
-                    else:
-                        self.status.set("Finished, but equilibrium checks need review.")
-                        self._log("NEEDS REVIEW: "+str(value["folder"]))
-                    self._log("Actual stress and movement are shown above; RESULTS.txt saved.")
+                    briefing=brief_native_result(value["summary"])
+                    ok=briefing["state"]=="SOLVED"
+                    self.result_state.configure(text=briefing["state"],
+                                                fg=C["accent"] if ok else C["danger"])
+                    self.balance_label.configure(text=briefing["balance"],
+                                                 fg=C["accent"] if ok else C["danger"])
+                    self.status.set("Analysis complete." if ok else "Results need review.")
+                    self._log(("SOLVED: " if ok else "REVIEW: ")+str(value["folder"]))
                 else:
-                    self.status.set("Solver failed. Read the message below.")
+                    self.status.set("Solver error — see activity log.")
+                    self.result_state.configure(text="ERROR",fg=C["danger"])
                     self._log("SOLVER ERROR: "+str(value))
-                    messagebox.showerror("Native analysis failed",str(value))
+                    if not self.activity_open:self.toggle_activity()
+                    messagebox.showerror("Analysis could not finish",str(value))
         except queue.Empty:
             pass
         finally:
@@ -270,25 +388,27 @@ class App(tk.Tk):
     def show_folder(self):
         if not self.latest:return
         try:open_result_folder(self.latest["folder"])
-        except Exception as exc:messagebox.showerror("Cannot open folder",str(exc))
+        except Exception as exc:messagebox.showerror("Cannot open results",str(exc))
 
     def show_report(self):
         if not self.latest:return
-        path=self.latest["report"]
-        try:text=path.read_text(encoding="utf-8")
+        try:report=self.latest["report"].read_text(encoding="utf-8")
         except Exception as exc:
-            messagebox.showerror("Cannot read report",str(exc));return
-        window=tk.Toplevel(self)
-        window.title("EZ-FEA | Native result report")
-        window.geometry("780x580")
-        frame=ttk.Frame(window,padding=10)
+            messagebox.showerror("Cannot read report",str(exc))
+            return
+        win=tk.Toplevel(self)
+        win.configure(bg=C["background"])
+        win.title("EZ-FEA | Results")
+        win.geometry("750x560")
+        frame=tk.Frame(win,bg=C["background"],padx=15,pady=15)
         frame.pack(fill="both",expand=True)
-        view=tk.Text(frame,wrap="word")
-        scrollbar=ttk.Scrollbar(frame,orient="vertical",command=view.yview)
-        view.configure(yscrollcommand=scrollbar.set)
-        scrollbar.pack(side="right",fill="y")
+        view=tk.Text(frame,wrap="word",bg=C["panel"],fg=C["text"],
+                     font=("Consolas",10),relief="flat",padx=15,pady=15)
+        bar=ttk.Scrollbar(frame,orient="vertical",command=view.yview)
+        view.configure(yscrollcommand=bar.set)
+        bar.pack(side="right",fill="y")
         view.pack(side="left",fill="both",expand=True)
-        view.insert("1.0",text)
+        view.insert("1.0",report)
         view.configure(state="disabled")
 
 
