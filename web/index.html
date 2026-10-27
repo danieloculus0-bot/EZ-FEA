@@ -57,6 +57,50 @@
       </div>
       <span id="evidenceBadge" class="truss-evidence-badge">Recorded native C3D10 solve</span>
     </div>
+    <div class="truss-mode-buttons" role="group" aria-label="Model work modes">
+      <button id="modeTruss" class="truss-mode-button active" type="button" aria-pressed="true">Edit truss</button>
+      <button id="modeImport" class="truss-mode-button" type="button" aria-pressed="false">Open my CAD</button>
+      <button id="modeBeam" class="truss-mode-button" type="button" aria-pressed="false">Calculate beam</button>
+    </div>
+    <section class="truss-editor" id="editTrussPanel" aria-label="Edit Warren truss geometry and load">
+      <div class="truss-fields">
+        <label>Span (mm)<input id="editSpan" type="number" min="150" max="3000" step="50" value="600"></label>
+        <label>Rise (mm)<input id="editRise" type="number" min="50" max="1500" step="10" value="180"></label>
+        <label>Chord square (mm)<input id="editChord" type="number" min="5" max="150" step="2" value="24"></label>
+        <label>Web square (mm)<input id="editWeb" type="number" min="5" max="150" step="2" value="18"></label>
+        <label>Downward load (N)<input id="editLoad" type="number" min="0" max="1000000" step="100" value="1000"></label>
+      </div>
+      <div class="truss-editor-actions">
+        <button id="restoreTruss" type="button" class="truss-mini-button">Restore solved example</button>
+        <button id="downloadSetup" type="button" class="truss-mini-button">Save model setup (.json)</button>
+        <button id="downloadMesh" type="button" class="truss-mini-button">Export model mesh (.stl)</button>
+      </div>
+      <p id="editNotice" class="truss-editor-notice" role="status">Edit a dimension or load to update the 3D model. Changes require a NEW FEA solve; archived stress values never carry over.</p>
+    </section>
+    <section id="openCadPanel" class="truss-editor" aria-label="Import and inspect your own CAD model" hidden>
+      <div class="truss-import-row">
+        <label for="cadFileInput">Open your STEP / STL / OBJ model</label>
+        <input id="cadFileInput" type="file" accept=".step,.stp,.stl,.obj">
+        <button id="markHold" class="truss-mini-button" type="button">Click to mark HOLD</button>
+        <button id="markForce" class="truss-mini-button" type="button">Click to mark LOAD</button>
+        <button id="saveCadSetup" class="truss-mini-button" type="button">Save markers (.json)</button>
+      </div>
+      <p class="truss-editor-notice" id="cadNotice">Your file stays in the browser. These are preview markers, not solver CAD face IDs. Use the desktop application to solve the real part.</p>
+    </section>
+    <section id="beamPanel" class="truss-editor" aria-label="Live browser beam finite element calculation" hidden>
+      <div class="truss-fields">
+        <label>Beam length (mm)<input id="beamLength" type="number" min="0.01" value="150" step="10"></label>
+        <label>Beam width (mm)<input id="beamWidth" type="number" min="0.01" value="25" step="5"></label>
+        <label>Beam height (mm)<input id="beamHeight" type="number" min="0.01" value="10" step="2"></label>
+        <label>Downward load (N)<input id="beamLoad" type="number" value="100" step="10"></label>
+        <label>Material<select id="beamMaterial">
+          <option value="a36">Steel (nominal A36)</option>
+          <option value="aluminum">6061-T6 aluminum</option>
+          <option value="stainless">304 stainless</option>
+        </select></label>
+      </div>
+      <p class="truss-editor-notice">This mode really recalculates an eight-element 2D beam FE model as you edit. It is NOT the native 3D truss solver.</p>
+    </section>
     <div class="truss-columns">
       <div class="truss-model-area">
         <div id="trussCanvas" class="truss-canvas" role="img" aria-label="Interactive 3D truss preview; real STEP surface when published, otherwise exact member-layout reconstruction">
@@ -85,17 +129,18 @@
         <div id="selectedFeature" class="truss-selected" aria-live="polite">Select a member to inspect its construction. The native run has whole-model results, not per-member stress values.</div>
       </div>
       <div class="truss-result-area">
-        <div class="truss-panel-title"><strong>REAL SOLVER MEASUREMENTS</strong><span id="trussProof">Source checked</span></div>
+        <div class="truss-panel-title"><strong id="resultPanelTitle">REAL SOLVER MEASUREMENTS</strong><span id="trussProof">Source checked</span></div>
         <div class="truss-metric"><small>Maximum displacement</small><strong id="trussDisplacement">—</strong><span>mm · native nodal result</span></div>
         <div class="truss-metric"><small>Peak von Mises stress</small><strong id="trussStress">—</strong><span>MPa · native integration-point result</span></div>
         <div class="truss-row"><span>3D elements</span><strong id="trussElements">—</strong></div>
         <div class="truss-row"><span>Force equilibrium</span><strong id="trussForceBalance">—</strong></div>
         <div class="truss-row"><span>Moment equilibrium</span><strong id="trussMomentBalance">—</strong></div>
-        <div class="truss-row"><span>Fixture setup</span><strong>Left fixed · right slides X</strong></div>
+        <div class="truss-row"><span>Fixture setup</span><strong id="fixtureState">Left fixed · right slides X</strong></div>
         <div class="truss-evidence-actions">
           <a id="trussSourceLink" class="native-cta" href="https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/40473627691" target="_blank" rel="noopener noreferrer">Inspect solver evidence ↗</a>
           <a class="native-secondary" href="https://github.com/danieloculus0-bot/EZ-FEA/blob/main/docs/examples/WARREN_TRUSS_EXAMPLE.md" target="_blank" rel="noopener noreferrer">Model assumptions ↗</a>
         </div>
+        <p id="resultStatus" class="truss-disclaimer" role="status">Archived measurements apply only to the exact original CAD and 1,000 N load.</p>
         <p class="truss-disclaimer">Results are for idealized continuous steel members at one mesh size. No calculated stress-color contour, weld throat rating, bolt connection, or buckling certification is implied.</p>
       </div>
     </div>
