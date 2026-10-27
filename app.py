@@ -13,7 +13,7 @@ from tkinter import filedialog, messagebox, ttk
 
 from ezfea.mesh import inspect_step
 from ezfea.desktop_controller import (
-    build_analysis, open_result_folder, preflight, run_desktop_case,
+    build_analysis, open_result_folder, preflight, run_native_child_process,
 )
 
 
@@ -235,7 +235,7 @@ class App(tk.Tk):
 
     def _solve(self,case):
         try:
-            self.responses.put(("ok",run_desktop_case(case)))
+            self.responses.put(("ok",run_native_child_process(case)))
         except Exception as exc:
             self.responses.put(("failed",str(exc)))
 
