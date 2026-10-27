@@ -10,6 +10,7 @@ on:
       - "ezfea/desktop_worker.py"
       - "ezfea/desktop_presentation.py"
       - "tests/test_desktop_controller.py"
+      - "tests/test_desktop_presentation.py"
       - "tests/test_desktop_gui.py"
       - ".github/workflows/desktop-app.yml"
 
