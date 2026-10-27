@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 import unittest
 
-from ezfea.fixture_suggestions import SCHEMA,check_hints
+from ezfea.fixture_suggestions import SCHEMA,check_hints,choose_coplanar_supports
 from ezfea.desktop_preview import extract_step_faces,validate_preview
 from ezfea.core import Face
 from ezfea.desktop_controller import build_multi_analysis
@@ -46,6 +46,19 @@ class HoleRecognitionTests(unittest.TestCase):
             self.assertGreaterEqual(hints["support_candidates"][0]["round_features_nearby"],2)
             self.assertTrue(hints["must_confirm_before_solve"])
             self.assertIn("actual_bolt_presence",hints["not_inferred"])
+
+    def test_multiple_coplanar_mounts_but_not_both_sides_of_a_plate(self):
+        def plane(tag,z,nearby,x):
+            return {"face":tag,"round_features_nearby":nearby,
+                    "bounds_mm":[x,0.,z,x+22.,20.,z]}
+        choices=[
+            plane(10,0,1,0),plane(11,0,1,100),
+            plane(12,10,1,0),plane(13,10,1,100),
+        ]
+        self.assertEqual(choose_coplanar_supports(choices),[10,11])
+        self.assertEqual(choose_coplanar_supports(choices,max_faces=1),[10])
+        with self.assertRaises(ValueError):
+            choose_coplanar_supports(choices,max_faces=100)
 
     def test_hints_reject_unrelated_cad_face_or_stale_sha(self):
         good={
