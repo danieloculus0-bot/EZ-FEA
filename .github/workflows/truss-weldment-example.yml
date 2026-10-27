@@ -1,0 +1,66 @@
+name: Real Warren Truss Weldment Example
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "ezfea/truss_example.py"
+      - "tests/test_truss_example.py"
+      - ".github/workflows/truss-weldment-example.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  make-step-and-solve:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install actual 3D STEP geometry engine and CalculiX solver
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y calculix-ccx libglu1-mesa
+          python -m pip install -r requirements.txt
+      - name: Verify real CAD solids and original CAD fixture faces
+        run: python -m unittest discover -s tests -p test_truss_example.py -v
+      - name: Export separate-member and fused STEP and execute real C3D10 solve
+        run: |
+          python -m ezfea.truss_example --solve --mesh 16 --out warren_truss_evidence
+          cat warren_truss_evidence/RESULTS.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Check result is real and both STEP interpretations are present
+        run: |
+          python - <<'PY'
+          import json, pathlib
+          root=pathlib.Path("warren_truss_evidence")
+          model=json.loads((root/"GEOMETRY.json").read_text())
+          outcome=json.loads((root/"TRUSS_RESULT.json").read_text())
+          assert (root/"separate_members.step").is_file()
+          assert (root/"fused_ideal_joints.step").is_file()
+          assert model["member_count"]==10
+          assert model["fused"]["solids"]==1
+          assert model["separate"]["solids"]==10
+          assert outcome["case_status"]=="completed"
+          assert outcome["element_count"]>100
+          assert outcome["force_balance_check"]=="pass"
+          assert outcome["moment_balance_check"]=="pass"
+          assert outcome["maximum_displacement_mm"]>0
+          assert outcome["peak_integration_point_von_mises_mpa"]>0
+          native=root/outcome["native_case_dir"]
+          assert all((native/f).is_file() for f in (
+              "source.step","analysis.inp","analysis.dat","analysis.frd","solver.log","case.json"
+          ))
+          print("Two STEP exports, actual solved native CAD and nonzero stress/deformation verified")
+          PY
+      - name: Preserve downloadable STEP, original native solver results and limitations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: EZ-FEA-Warren-truss-STEP-and-real-FEA
+          path: warren_truss_evidence/
+          retention-days: 90
+          if-no-files-found: warn
