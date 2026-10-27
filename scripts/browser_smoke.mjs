@@ -131,7 +131,7 @@ try{
   await software.mouse.down();
   await software.mouse.move(bounds.x+bounds.width*.7,bounds.y+bounds.height*.6,{steps:10});
   await software.mouse.up();
-  assert.notEqual(await angle(),firstAuto,
+  assert.notEqual(await fallbackAngle(),firstAuto,
     "No-WebGL pointer drag does not affect model orientation");
   await software.screenshot({path:"browser-software-3d-fallback.png",fullPage:true});
   await noGpu.close();
