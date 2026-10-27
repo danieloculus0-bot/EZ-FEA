@@ -32,6 +32,8 @@ class App(tk.Tk):
         self.configure(bg=C["background"])
         self.responses=queue.Queue()
         self.filename=""
+        self.source_sha256=None
+        self.active_run_signature=None
         self.faces=[]
         self.support_faces=[]
         self.suggested_support_faces=set()
@@ -64,6 +66,15 @@ class App(tk.Tk):
         }
         self._styles()
         self._build()
+        # A completed result belongs to the exact input settings used to
+        # create it. Changing a load or material must never leave "SOLVED"
+        # beside numbers for the previous setup.
+        self._watched_inputs=(
+            self.force,self.direction,self.mesh,self.e,self.nu,
+            self.yield_mpa,self.element_type,self.loaded,
+        )
+        for field in self._watched_inputs:
+            field.trace_add("write",lambda *_args:self._inputs_changed())
         self.after(150,self._poll)
         missing=preflight()
         self._log("Native solver detected." if not missing else
@@ -259,6 +270,23 @@ class App(tk.Tk):
                             relief="flat",padx=12,pady=9,font=("Consolas",9))
         self.logbox.pack(fill="both",expand=True)
 
+    def _input_signature(self):
+        return (
+            self.filename,self.source_sha256,
+            tuple(self.support_faces),
+            self.load_box.current(),
+            self.force.get(),self.direction.get(),
+            self.mesh.get(),self.e.get(),self.nu.get(),
+            self.yield_mpa.get(),self.element_type.get(),
+        )
+
+    def _inputs_changed(self):
+        if self.busy:
+            self.status.set("Inputs changed while solving; results will need a new run.")
+        elif self.latest is not None:
+            self._clear_result()
+            self.status.set("Setup changed. Press SOLVE to recalculate.")
+
     def _sync_faces(self):
         tags={f.tag for f in self.faces}
         self.support_faces=[tag for tag in self.support_faces if tag in tags]
@@ -402,15 +430,17 @@ class App(tk.Tk):
     def load_file(self,selected):
         if self.busy:return False
         try:
-            faces=inspect_step(selected)
+            faces=inspect_step(selected,require_single_solid=True)
             if len(faces)<2:
                 raise ValueError("No usable closed-solid CAD faces were found.")
+            source_sha=hashlib.sha256(Path(selected).read_bytes()).hexdigest()
         except Exception as exc:
             self._log("IMPORT ERROR: "+str(exc))
             messagebox.showerror("Cannot import STEP",str(exc))
             return False
         self._clear_result()
         self.filename=str(Path(selected).resolve())
+        self.source_sha256=source_sha
         self.faces=faces
         self.support_faces=[]
         self.suggested_support_faces=set()
@@ -439,6 +469,12 @@ class App(tk.Tk):
             self.fy.set(str(fy))
             self.fz.set(str(fz))
             values.update(fx=fx,fy=fy,fz=fz)
+            if (not self.source_sha256 or
+                hashlib.sha256(Path(self.filename).read_bytes()).hexdigest()!=self.source_sha256):
+                raise ValueError(
+                    "The STEP file changed since import. Reopen the file to "
+                    "refresh face IDs before solving."
+                )
             case=build_multi_analysis(
                 self.filename,self.faces,
                 [{"face":t,"axes":[1,2,3]} for t in self.support_faces],
@@ -463,6 +499,7 @@ class App(tk.Tk):
             self.suggested_support_faces.clear()
             self._sync_faces()
         self._clear_result()
+        self.active_run_signature=self._input_signature()
         self._set_busy(True)
         self.status.set("Meshing and solving…")
         self.result_state.configure(text="SOLVING",fg=C["accent"])
@@ -479,6 +516,12 @@ class App(tk.Tk):
                 kind,value=self.responses.get_nowait()
                 self._set_busy(False)
                 if kind=="ok":
+                    if (self.active_run_signature!=self._input_signature()
+                        or value["record"].get("input_sha256")!=self.source_sha256):
+                        self._clear_result()
+                        self.status.set("Settings or source changed during solve. Rerun to see current results.")
+                        self._log("OUTDATED: solver completed for earlier settings at "+str(value["folder"]))
+                        continue
                     self.latest=value
                     for key,var in self.result_vars.items():
                         var.set(value["summary"].get(key,"—"))
