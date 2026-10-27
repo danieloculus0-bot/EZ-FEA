@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="450" viewBox="0 0 860 450" role="img" aria-label="Schematic of EZ-FEA ten-member Warren-style truss with left pin-like fixture, right roller-like fixture and downward load at midspan top chord; actual finite element CAD is separately generated">
+<rect width="860" height="450" rx="24" fill="#070a0a"/>
+<rect x="20" y="20" width="820" height="410" rx="18" fill="#101719" stroke="#303d39"/>
+<text x="46" y="58" fill="#dfece3" font-family="Arial,sans-serif" font-size="23" font-weight="700">EZ-FEA  /  Warren truss demonstrator</text>
+<text x="46" y="83" fill="#9aafa0" font-family="Arial,sans-serif" font-size="13">600 mm span · 180 mm rise · 10 solid square-section bars · 1,000 N downward</text>
+<g stroke-linejoin="round"><line x1="90" y1="319" x2="726" y2="319" stroke="#7e9b94" stroke-width="24" stroke-linecap="round"/>
+<line x1="169.5" y1="117.39999999999998" x2="646.5" y2="117.39999999999998" stroke="#7e9b94" stroke-width="24" stroke-linecap="round"/>
+<line x1="90" y1="319" x2="169.5" y2="117.39999999999998" stroke="#89c19e" stroke-width="18" stroke-linecap="round"/>
+<line x1="169.5" y1="117.39999999999998" x2="249" y2="319" stroke="#89c19e" stroke-width="18" stroke-linecap="round"/>
+<line x1="249" y1="319" x2="328.5" y2="117.39999999999998" stroke="#89c19e" stroke-width="18" stroke-linecap="round"/>
+<line x1="328.5" y1="117.39999999999998" x2="408" y2="319" stroke="#89c19e" stroke-width="18" stroke-linecap="round"/>
+<line x1="408" y1="319" x2="487.5" y2="117.39999999999998" stroke="#89c19e" stroke-width="18" stroke-linecap="round"/>
+<line x1="487.5" y1="117.39999999999998" x2="567" y2="319" stroke="#89c19e" stroke-width="18" stroke-linecap="round"/>
+<line x1="567" y1="319" x2="646.5" y2="117.39999999999998" stroke="#89c19e" stroke-width="18" stroke-linecap="round"/>
+<line x1="646.5" y1="117.39999999999998" x2="726" y2="319" stroke="#89c19e" stroke-width="18" stroke-linecap="round"/></g>
+<g font-family="Arial,sans-serif"><circle cx="90" cy="319" r="4.5" fill="#ecf6e9"/><text x="90" y="340" font-size="12" fill="#d1e2d6" text-anchor="middle">B0</text>
+<circle cx="169.5" cy="117.39999999999998" r="4.5" fill="#ecf6e9"/><text x="169.5" y="100.39999999999998" font-size="12" fill="#d1e2d6" text-anchor="middle">T0</text>
+<circle cx="249" cy="319" r="4.5" fill="#ecf6e9"/><text x="249" y="340" font-size="12" fill="#d1e2d6" text-anchor="middle">B1</text>
+<circle cx="328.5" cy="117.39999999999998" r="4.5" fill="#ecf6e9"/><text x="328.5" y="100.39999999999998" font-size="12" fill="#d1e2d6" text-anchor="middle">T1</text>
+<circle cx="408" cy="319" r="4.5" fill="#ecf6e9"/><text x="408" y="340" font-size="12" fill="#d1e2d6" text-anchor="middle">B2</text>
+<circle cx="487.5" cy="117.39999999999998" r="4.5" fill="#ecf6e9"/><text x="487.5" y="100.39999999999998" font-size="12" fill="#d1e2d6" text-anchor="middle">T2</text>
+<circle cx="567" cy="319" r="4.5" fill="#ecf6e9"/><text x="567" y="340" font-size="12" fill="#d1e2d6" text-anchor="middle">B3</text>
+<circle cx="646.5" cy="117.39999999999998" r="4.5" fill="#ecf6e9"/><text x="646.5" y="100.39999999999998" font-size="12" fill="#d1e2d6" text-anchor="middle">T3</text>
+<circle cx="726" cy="319" r="4.5" fill="#ecf6e9"/><text x="726" y="340" font-size="12" fill="#d1e2d6" text-anchor="middle">B4</text></g>
+<g fill="#baf680" font-family="Arial,sans-serif">
+ <rect x="388" y="92.39999999999998" width="40" height="17" rx="2"/>
+ <path d="M 408 23.399999999999977 v 59" stroke="#c5ff4a" stroke-width="4"/>
+ <path d="M 398 75.39999999999998 l 10 15 l 10 -15" fill="none" stroke="#c5ff4a" stroke-width="4"/>
+ <text x="431" y="55.39999999999998" font-size="15" font-weight="700">1,000 N</text>
+</g>
+<g>
+<rect x="72" y="325" width="36" height="25" rx="3" fill="#69d99a"/>
+<path d="M 64 352 h 52 M 69 352 l -7 9 M 83 352 l -7 9 M 97 352 l -7 9 M 111 352 l -7 9" stroke="#69d99a" stroke-width="2"/>
+<rect x="708" y="325" width="36" height="25" rx="3" fill="#69d99a"/>
+<circle cx="716" cy="357" r="5" fill="none" stroke="#69d99a" stroke-width="2"/>
+<circle cx="736" cy="357" r="5" fill="none" stroke="#69d99a" stroke-width="2"/>
+<text x="90" y="398" text-anchor="middle" fill="#a8c2af" font-family="Arial,sans-serif" font-size="12">Left: XYZ fixed</text>
+<text x="726" y="398" text-anchor="middle" fill="#a8c2af" font-family="Arial,sans-serif" font-size="12">Right: YZ fixed</text>
+</g>
+<text x="430" y="421" text-anchor="middle" fill="#829a8d" font-family="Arial,sans-serif" font-size="10">CAD layout illustration — NOT a stress contour or weld design verification</text>
+</svg>
