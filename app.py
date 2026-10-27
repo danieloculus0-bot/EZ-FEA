@@ -481,7 +481,7 @@ class App(tk.Tk):
                 self.load_box.current(),values)
             missing=preflight()
             if missing:raise ValueError("\n".join(missing))
-        except (ValueError,TypeError) as exc:
+        except (OSError,ValueError,TypeError) as exc:
             self.status.set("Check your setup.")
             messagebox.showerror("Cannot solve",str(exc))
             return
