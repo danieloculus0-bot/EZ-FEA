@@ -32,7 +32,53 @@ class DesktopEndToEndTests(unittest.TestCase):
             self.assertIn("MPa",outcome["summary"]["max_stress"])
             self.assertIn("PASS",outcome["summary"]["moment_balance"])
             self.assertTrue((outcome["folder"]/"analysis.frd").is_file())
-            self.assertTrue((outcome["folder"]/"RESULTS.txt").is_file())
+            report=(outcome["folder"]/"RESULTS.txt").read_text(encoding="utf-8")
+            self.assertIn(
+                f"CAD face {faces['left']}: restrained global directions X,Y,Z",report)
+            self.assertIn(
+                f"CAD face {faces['right']}: restrained global directions Y,Z",report)
+            self.assertIn(
+                f"CAD face {faces['load']}: total XYZ force",report)
+            self.assertIn("Total prescribed XYZ force (N): [0.0, -1000.0, 0.0]",report)
+            self.assertNotIn("CAD face 0:",report)
+
+    @patch("app.messagebox.showerror")
+    def test_multibody_step_rejected_at_import_not_after_solving(self,error_dialog):
+        from app import App
+        from ezfea.truss_example import generate_example
+        with tempfile.TemporaryDirectory() as tmp:
+            model=generate_example(Path(tmp)/"truss")
+            source=Path(tmp)/"truss"/model["separate"]["step"]
+            app=App()
+            try:
+                app.demo()
+                existing=app.filename
+                self.assertFalse(app.load_file(str(source)))
+                self.assertEqual(app.filename,existing)
+                self.assertFalse(app.busy)
+                self.assertIsNone(app.latest)
+                error_dialog.assert_called()
+                self.assertIn("separate solids",str(error_dialog.call_args))
+            finally:
+                app.destroy()
+
+    @patch("app.messagebox.showerror")
+    def test_changed_step_source_is_blocked_before_solver(self,error_dialog):
+        from app import App
+        with tempfile.TemporaryDirectory() as tmp:
+            old=os.getcwd()
+            os.chdir(tmp)
+            app=App()
+            try:
+                app.demo()
+                self.assertTrue(app.source_sha256)
+                Path(app.filename).write_bytes(Path(app.filename).read_bytes()+b"\n")
+                app.run()
+                self.assertFalse(app.busy)
+                self.assertIn("changed",str(error_dialog.call_args))
+            finally:
+                app.destroy()
+                os.chdir(old)
 
     @patch("app.messagebox.showerror")
     @patch("app.messagebox.askyesno",return_value=False)
@@ -72,6 +118,32 @@ class DesktopEndToEndTests(unittest.TestCase):
                 confirmation.assert_not_called()
             finally:
                 if app is not None:app.destroy()
+
+    @patch("app.messagebox.showerror")
+    def test_mid_solve_setting_change_discards_obsolete_ui_result(self,error_dialog):
+        from app import App
+        with tempfile.TemporaryDirectory() as temp:
+            old=os.getcwd()
+            os.chdir(temp)
+            app=App()
+            try:
+                app.demo()
+                app.run()
+                self.assertTrue(app.busy)
+                app.force.set("200")
+                deadline=time.monotonic()+100
+                while app.busy and time.monotonic()<deadline:
+                    app.update()
+                    time.sleep(.07)
+                app.update()
+                self.assertFalse(app.busy)
+                self.assertIsNone(app.latest)
+                self.assertEqual(app.result_vars["max_stress"].get(),"—")
+                self.assertIn("Rerun",app.status.get())
+                error_dialog.assert_not_called()
+            finally:
+                app.destroy()
+                os.chdir(old)
 
     @patch("app.messagebox.showerror")
     def test_demo_buttons_start_actual_native_solve_and_show_numerical_results(self, error_dialog):
@@ -152,6 +224,13 @@ class DesktopEndToEndTests(unittest.TestCase):
                 self.assertTrue(Path(app.latest["folder"],"analysis.frd").is_file())
                 self.assertTrue(app.latest["report"].is_file())
                 self.assertEqual(str(app.folder_button.cget("state")),"normal")
+                # Mutating the force after a real solve cannot leave
+                # obsolete stress results on-screen as though current.
+                app.force.set("175")
+                self.assertIsNone(app.latest)
+                self.assertEqual(app.result_vars["max_stress"].get(),"—")
+                self.assertEqual(str(app.folder_button.cget("state")),"disabled")
+                self.assertIn("recalculate",app.status.get())
             finally:
                 if app is not None:
                     app.destroy()
