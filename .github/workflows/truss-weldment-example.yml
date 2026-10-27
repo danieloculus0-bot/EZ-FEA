@@ -32,6 +32,53 @@ jobs:
         run: |
           python -m ezfea.truss_example --solve --mesh 16 --out warren_truss_evidence
           cat warren_truss_evidence/RESULTS.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Repeat the real truss solve with a finer C3D10 mesh
+        run: |
+          python -m ezfea.truss_example --solve --mesh 12 --out warren_truss_refined
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from math import isfinite
+          base=json.loads(Path("warren_truss_evidence/TRUSS_RESULT.json").read_text())
+          fine=json.loads(Path("warren_truss_refined/TRUSS_RESULT.json").read_text())
+          assert base["case_status"]==fine["case_status"]=="completed"
+          assert fine["element_count"]>base["element_count"]
+          assert base["force_balance_check"]==fine["force_balance_check"]=="pass"
+          assert base["moment_balance_check"]==fine["moment_balance_check"]=="pass"
+          def difference(field):
+              old,new=base[field],fine[field]
+              assert isfinite(old) and isfinite(new) and old>0 and new>0
+              return abs(old-new)/max(old,new)
+          change_u=difference("maximum_displacement_mm")
+          change_stress=difference("peak_integration_point_von_mises_mpa")
+          report={
+              "schema":"ezfea.truss_two_grid_observation.v1",
+              "mesh_sizes_mm":[base["mesh_size_mm"],fine["mesh_size_mm"]],
+              "element_counts":[base["element_count"],fine["element_count"]],
+              "max_displacements_mm":[base["maximum_displacement_mm"],fine["maximum_displacement_mm"]],
+              "peak_von_mises_mpa":[base["peak_integration_point_von_mises_mpa"],fine["peak_integration_point_von_mises_mpa"]],
+              "displacement_relative_change":change_u,
+              "peak_stress_relative_change":change_stress,
+              "convergence_established":False,
+              "engineering_validation":"not_established",
+              "interpretation":"Two grids are an observation, not a mesh-independent stress field or weld check",
+          }
+          Path("warren_truss_evidence/MESH_COMPARISON.json").write_text(
+              json.dumps(report,indent=2)+"\n")
+          print(json.dumps(report,indent=2))
+          with Path("warren_truss_evidence/MESH_COMPARISON.md").open("w") as stream:
+              stream.write("# Truss two-grid experimental comparison\n\n")
+              stream.write("| Mesh | Elements | Max displacement (mm) | Peak von Mises (MPa) |\n")
+              stream.write("|---|---:|---:|---:|\n")
+              for m,n,u,s in zip(
+                  report["mesh_sizes_mm"],report["element_counts"],
+                  report["max_displacements_mm"],report["peak_von_mises_mpa"]):
+                  stream.write(f"| {m:g} mm | {n:,} | {u:.7f} | {s:.5f} |\n")
+              stream.write(f"\nDisplacement change: {100*change_u:.3g}%; ")
+              stream.write(f"peak-stress change: {100*change_stress:.3g}%.\n\n")
+              stream.write("Two meshes do not establish convergence or weld adequacy.\n")
+          PY
+          cat warren_truss_evidence/MESH_COMPARISON.md >> "$GITHUB_STEP_SUMMARY"
       - name: Check result is real and both STEP interpretations are present
         run: |
           python - <<'PY'
@@ -61,6 +108,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: EZ-FEA-Warren-truss-STEP-and-real-FEA
-          path: warren_truss_evidence/
+          path: |
+            warren_truss_evidence/
+            warren_truss_refined/
           retention-days: 90
           if-no-files-found: warn
