@@ -152,6 +152,8 @@ function selectMember(e){
     el("selectedFeature").textContent="Left foot: actual native boundary condition fixed translations X, Y and Z. This is a finite area support, not a physical bolt model.";
   }else if(id==="RIGHT_SUPPORT"){
     el("selectedFeature").textContent="Right foot: actual native restraint in Y and Z, free in X (sliding support). The support's real-world stiffness is not simulated.";
+  }else if(id==="FUSED_CAD"){
+    el("selectedFeature").textContent="Actual fused STEP solid: ten overlapping structural bars joined as ideal continuous steel. Whole-model displacement and stress are measured; real weld throat or fastener physics are not modeled.";
   }else if(id==="LOAD_PAD"){
     el("selectedFeature").textContent="Top-center pad: 1,000 N downward (global −Y), distributed over its original STEP face in the native solver.";
   }else{
@@ -186,14 +188,9 @@ async function loadAuthenticSTL(){
     color:nativeColor,metalness:.42,roughness:.46,side:THREE.DoubleSide}));
   cad.userData.memberId="FUSED_CAD";
   group.add(cad);
-  // Real STEP is displayed; member selection proxies are invisible but
-  // geometrically derived from the same original Python member recipe.
-  const invisible=new THREE.MeshBasicMaterial({
-    transparent:true,opacity:0,depthWrite:false});
-  for(const member of data.geometry.members){
-    const proxy=bar(member,invisible);
-    proxy.visible=false;
-  }
+  selectors.push(cad);
+  // The tessellation represents the unioned CAD solid. Do not fabricate
+  // per-member stress labels or claim the fused STEP retains separate bodies.
   say("Showing tessellated original fused STEP surface, verified by SHA-256. Drag to rotate; saved native numbers are below.");
   return true;
 }
