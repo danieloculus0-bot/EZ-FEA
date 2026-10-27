@@ -327,6 +327,9 @@ class App(tk.Tk):
             else:
                 self.support_faces.append(tag)
                 self.suggested_support_faces.discard(tag)
+            # Any manually reviewed/edit operation removes inferred status
+            # for that face. No later prompt is needed for manual additions.
+            self.suggestions_review_pending=bool(self.suggested_support_faces)
             self._clear_result()
             self._sync_faces()
             self.status.set(f"{len(self.support_faces)} held surfaces selected. Choose LOAD or continue editing.")
