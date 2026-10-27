@@ -48,7 +48,7 @@ class DesktopEndToEndTests(unittest.TestCase):
                 original_fixed=app.fix_box.current()
                 original_loaded=app.load_box.current()
                 for _,tag,tri in reversed(app.picker.painted):
-                    if tag==app.faces[original_loaded].tag:
+                    if tag in {app.faces[original_loaded].tag,app.faces[original_fixed].tag}:
                         continue
                     px=sum(v[0] for v in tri)/3
                     py=sum(v[1] for v in tri)/3
@@ -61,10 +61,16 @@ class DesktopEndToEndTests(unittest.TestCase):
                 evt=SimpleNamespace(x=px,y=py)
                 app.picker._down(evt)
                 app.picker._up(evt)
-                self.assertEqual(app.faces[app.fix_box.current()].tag,tag)
-                self.assertEqual(app.picker.fixed_tag,tag)
+                self.assertIn(tag,app.support_faces)
+                self.assertIn(tag,app.picker.support_tags)
+                self.assertEqual(len(app.support_faces),2)
+                # Removing a support point is just clicking it again.
+                app.picker._down(evt)
+                app.picker._up(evt)
+                self.assertNotIn(tag,app.support_faces)
+                self.assertEqual(len(app.support_faces),1)
                 # Restore demo fixture for independent mechanical verification.
-                app.fix_box.current(original_fixed)
+                app.support_faces=[app.faces[original_fixed].tag]
                 app.load_box.current(original_loaded)
                 app._sync_faces()
                 app.run()
