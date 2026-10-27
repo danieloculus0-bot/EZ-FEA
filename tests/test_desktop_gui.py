@@ -14,6 +14,45 @@ from unittest.mock import patch
                      "Native Tk display and CalculiX required")
 class DesktopEndToEndTests(unittest.TestCase):
     @patch("app.messagebox.showerror")
+    @patch("app.messagebox.askyesno",return_value=False)
+    def test_real_drilled_plate_auto_held_plane_can_be_removed(self, confirmation,show_error):
+        from app import App
+        from ezfea.fixture_examples import drilled_plate_step
+        with tempfile.TemporaryDirectory() as folder:
+            plate=drilled_plate_step(Path(folder)/"two_bolt_holes.step")
+            app=None
+            try:
+                app=App()
+                app.update()
+                self.assertTrue(app.load_file(str(plate)))
+                until=time.monotonic()+30
+                while not app.picker.triangles and time.monotonic()<until:
+                    app.update()
+                    time.sleep(.06)
+                self.assertTrue(app.picker.triangles,app.picker.info.get())
+                self.assertEqual(len(app.support_faces),1)
+                guess=app.support_faces[0]
+                self.assertIn(guess,app.suggested_support_faces)
+                self.assertTrue(app.suggestions_review_pending)
+                self.assertIn(guess,{f.tag for f in app.faces})
+                self.assertEqual(app.picker.support_tags,[guess])
+                # Automatic inference does not invent the actual force face.
+                self.assertEqual(app.load_box.current(),-1)
+                # Remove a suggested support with a single click gesture.
+                self.assertTrue(app._on_face_click("fixed",guess))
+                self.assertFalse(app.support_faces)
+                self.assertFalse(app.suggestions_review_pending)
+                # Add it back as a deliberate operator selection.
+                self.assertTrue(app._on_face_click("fixed",guess))
+                self.assertEqual(app.support_faces,[guess])
+                self.assertFalse(app.suggestions_review_pending)
+                self.assertEqual(app.picker.fixed_tag,guess)
+                show_error.assert_not_called()
+                confirmation.assert_not_called()
+            finally:
+                if app is not None:app.destroy()
+
+    @patch("app.messagebox.showerror")
     def test_demo_buttons_start_actual_native_solve_and_show_numerical_results(self, error_dialog):
         from app import App
         with tempfile.TemporaryDirectory() as temp:
