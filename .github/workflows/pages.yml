@@ -132,6 +132,16 @@ jobs:
           node --test web/tests/*.test.mjs
           node --check web/truss_demo.mjs
           node --check web/truss_evidence.mjs
+      - name: Bundle the actual model viewer locally for reliable rotation
+        run: |
+          # Static Pages cannot solve arbitrary 3D FEA, but its orbit controls,
+          # STL/OBJ preview and live 2D beam calculation must always load.
+          npm install --no-save --no-package-lock --no-audit --no-fund three@0.169.0 esbuild@0.25.12
+          ./node_modules/.bin/esbuild web/truss_demo.mjs \
+            --bundle --format=esm --platform=browser --target=es2020 \
+            --outfile=web/truss_bundle.mjs
+          test -s web/truss_bundle.mjs
+          node --check web/truss_bundle.mjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload static app
