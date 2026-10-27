@@ -1,0 +1,57 @@
+name: Browser Modeling Functional Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "web/index.html"
+      - "web/truss_demo.mjs"
+      - "web/truss_loader.mjs"
+      - "web/workbench_state.mjs"
+      - "web/styles.css"
+      - "scripts/browser_smoke.mjs"
+      - ".github/workflows/browser-modeling-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install browser-test tooling and bundle actual model viewer locally
+        run: |
+          npm install --no-save --no-package-lock --no-audit --no-fund \
+            three@0.169.0 esbuild@0.25.12 playwright@1.56.1
+          ./node_modules/.bin/esbuild web/truss_demo.mjs \
+            --bundle --format=esm --platform=browser --target=es2020 \
+            --outfile=web/truss_bundle.mjs
+          node --check web/truss_bundle.mjs
+          node --test web/tests/*.test.mjs
+      - name: Start local static site and use a real Chromium browser
+        run: |
+          if command -v google-chrome >/dev/null; then
+            export CHROME_BIN="$(command -v google-chrome)"
+          elif command -v google-chrome-stable >/dev/null; then
+            export CHROME_BIN="$(command -v google-chrome-stable)"
+          else
+            npx playwright install chromium
+          fi
+          python -m http.server 8787 --directory web >/tmp/ezfea-static.log 2>&1 &
+          server=$!
+          trap 'kill "$server" || true' EXIT
+          node scripts/browser_smoke.mjs
+      - name: Save real browser screenshot if generated
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ezfea-browser-modeling-functional-proof
+          path: browser-functional-proof.png
+          if-no-files-found: ignore
+          retention-days: 7
