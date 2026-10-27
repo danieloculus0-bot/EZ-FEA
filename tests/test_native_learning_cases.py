@@ -10,11 +10,11 @@ from ezfea.native_learning_cases import specimens,run_curriculum
 class NativeCurriculumTests(unittest.TestCase):
     def test_physical_geometry_is_not_reused_across_splits(self):
         rows=specimens()
-        self.assertEqual(len(rows),21)
+        self.assertEqual(len(rows),42)
         self.assertEqual(len([r for r in rows if r["split"]=="train"]),12)
-        self.assertEqual(len([r for r in rows if r["split"]=="holdout"]),9)
+        self.assertEqual(len([r for r in rows if r["split"]=="holdout"]),30)
         self.assertEqual({x["family"] for x in rows},{"axial","bending","torsion"})
-        self.assertEqual(len({r["geometry_key"] for r in rows}),21)
+        self.assertEqual(len({r["geometry_key"] for r in rows}),42)
 
     def test_failures_persist_instead_of_becoming_training_labels(self):
         with tempfile.TemporaryDirectory() as tmp:
