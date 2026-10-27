@@ -13,8 +13,10 @@ from tkinter import filedialog, messagebox, ttk
 
 from ezfea.mesh import inspect_step
 from ezfea.desktop_view import FacePicker
+from ezfea.fixture_suggestions import check_hints
+import hashlib
 from ezfea.desktop_controller import (
-    build_analysis, open_result_folder, preflight, run_native_child_process,
+    build_analysis, build_multi_analysis, open_result_folder, preflight, run_native_child_process,
 )
 from ezfea.desktop_presentation import PALETTE, DIRECTIONS, force_components, brief_native_result
 
@@ -31,6 +33,9 @@ class App(tk.Tk):
         self.responses=queue.Queue()
         self.filename=""
         self.faces=[]
+        self.support_faces=[]
+        self.suggested_support_faces=set()
+        self.suggestions_review_pending=False
         self.busy=False
         self.latest=None
 
@@ -145,7 +150,7 @@ class App(tk.Tk):
 
         workspace=tk.Frame(root,bg=C["background"])
         workspace.pack(fill="both",expand=True)
-        self.picker=FacePicker(workspace,self._on_face_click)
+        self.picker=FacePicker(workspace,self._on_face_click,self._on_fixture_hints)
         self.picker.pack(side="left",fill="both",expand=True,padx=(0,12),pady=(0,8))
         right=tk.Frame(workspace,bg=C["background"])
         right.pack(side="right",fill="both",expand=True)
@@ -201,7 +206,7 @@ class App(tk.Tk):
         self.fix_box.pack(side="left",fill="x",expand=True,padx=(0,4))
         self.load_box=ttk.Combobox(fallback,textvariable=self.loaded,state="readonly",width=15)
         self.load_box.pack(side="left",fill="x",expand=True,padx=(4,0))
-        self.fix_box.bind("<<ComboboxSelected>>",lambda _:self._sync_faces())
+        self.fix_box.bind("<<ComboboxSelected>>",lambda _:self._legacy_support_changed())
         self.load_box.bind("<<ComboboxSelected>>",lambda _:self._sync_faces())
 
         go=tk.Frame(right,bg=C["background"])
@@ -255,27 +260,84 @@ class App(tk.Tk):
         self.logbox.pack(fill="both",expand=True)
 
     def _sync_faces(self):
-        fixed=self.fix_box.current()
+        tags={f.tag for f in self.faces}
+        self.support_faces=[tag for tag in self.support_faces if tag in tags]
+        if self.support_faces:
+            index=next(i for i,f in enumerate(self.faces) if f.tag==self.support_faces[0])
+            self.fix_box.current(index)
+        else:
+            self.fixed.set("")
         loaded=self.load_box.current()
         self.picker.update_selection(
-            fixed=self.faces[fixed].tag if fixed>=0 and fixed<len(self.faces) else None,
-            loaded=self.faces[loaded].tag if loaded>=0 and loaded<len(self.faces) else None)
+            supports=self.support_faces,
+            suggested=self.suggested_support_faces,
+            loaded=self.faces[loaded].tag if 0<=loaded<len(self.faces) else None)
+        count=len(self.support_faces)
+        self.picker.info.set(
+            f"{count} HOLD face(s). Click HOLD and any highlighted face to remove. "
+            f"{'Suggested fixture: review before solve.' if self.suggestions_review_pending else 'Click another face to add.'}"
+            if count else "Click HOLD then a surface to add a support.")
+
+    def _legacy_support_changed(self):
+        index=self.fix_box.current()
+        if 0<=index<len(self.faces):
+            tag=self.faces[index].tag
+            if tag not in self.support_faces:
+                self.support_faces=[tag]
+            self.suggested_support_faces.clear()
+            self.suggestions_review_pending=False
+        self._clear_result()
+        self._sync_faces()
+
+    def _on_fixture_hints(self,hints):
+        # The preview was independently SHA-checked against the original STEP.
+        # Never replace an operator-set support with inferred geometry.
+        if not self.faces or self.support_faces or not self.filename:
+            return
+        try:
+            sha=hashlib.sha256(Path(self.filename).read_bytes()).hexdigest()
+            suggested=check_hints(
+                hints,source_sha256=sha,face_ids=[f.tag for f in self.faces])
+        except (OSError,ValueError) as exc:
+            self._log("Attachment recognition declined: "+str(exc))
+            return
+        if suggested:
+            self.support_faces=suggested
+            self.suggested_support_faces=set(suggested)
+            self.suggestions_review_pending=True
+            self._sync_faces()
+            self.status.set("Suggested mounting plane from round CAD features. Check HOLD, then choose LOAD.")
+            self._log("Suggested ideal support at face(s) "+str(suggested)+
+                      " from planar surfaces adjoining round features; real bolt/fixture NOT established.")
 
     def _on_face_click(self,role,tag):
         if self.busy:return False
         index=next((i for i,f in enumerate(self.faces) if f.tag==tag),None)
         if index is None:
-            self.status.set("CAD face ID does not match this STEP model.")
+            self.status.set("Clicked face is not in the current STEP part.")
             return False
-        selector=self.fix_box if role=="fixed" else self.load_box
-        other=self.load_box if role=="fixed" else self.fix_box
-        if other.current()==index:
-            self.status.set("Choose a different face for the load and the support.")
+        if role=="fixed":
+            # Toggle: adding extra supports is as easy as removing one.
+            if tag in self.support_faces:
+                self.support_faces.remove(tag)
+                self.suggested_support_faces.discard(tag)
+            elif self.load_box.current()==index:
+                self.status.set("Loaded face cannot also be held.")
+                return False
+            else:
+                self.support_faces.append(tag)
+                self.suggested_support_faces.discard(tag)
+            self._clear_result()
+            self._sync_faces()
+            self.status.set(f"{len(self.support_faces)} held surfaces selected. Choose LOAD or continue editing.")
+            return True
+        if tag in self.support_faces:
+            self.status.set("Loaded face cannot also be held. Remove HOLD first.")
             return False
-        selector.current(index)
+        self.load_box.current(index)
         self._clear_result()
         self._sync_faces()
-        self.status.set("Face selected. Choose the other face or press SOLVE.")
+        self.status.set("LOAD face selected. Review supports and press SOLVE.")
         return True
 
     def toggle_advanced(self):
@@ -321,6 +383,7 @@ class App(tk.Tk):
                 left=min(range(len(self.faces)),key=lambda i:abs(self.faces[i].center_mm[0]))
                 right=max(range(len(self.faces)),key=lambda i:self.faces[i].center_mm[0])
                 self.fix_box.current(left)
+                self.support_faces=[self.faces[left].tag]
                 self.load_box.current(right)
                 self._sync_faces()
                 self.status.set("Example ready. Press SOLVE.")
@@ -346,6 +409,9 @@ class App(tk.Tk):
         self._clear_result()
         self.filename=str(Path(selected).resolve())
         self.faces=faces
+        self.support_faces=[]
+        self.suggested_support_faces=set()
+        self.suggestions_review_pending=False
         self.fixed.set("")
         self.loaded.set("")
         self.fix_box["values"]=[f.label for f in faces]
@@ -370,14 +436,29 @@ class App(tk.Tk):
             self.fy.set(str(fy))
             self.fz.set(str(fz))
             values.update(fx=fx,fy=fy,fz=fz)
-            case=build_analysis(self.filename,self.faces,
-                                self.fix_box.current(),self.load_box.current(),values)
+            case=build_multi_analysis(
+                self.filename,self.faces,
+                [{"face":t,"axes":[1,2,3]} for t in self.support_faces],
+                self.load_box.current(),values)
             missing=preflight()
             if missing:raise ValueError("\n".join(missing))
         except (ValueError,TypeError) as exc:
             self.status.set("Check your setup.")
             messagebox.showerror("Cannot solve",str(exc))
             return
+        if self.suggestions_review_pending:
+            confirmed=messagebox.askyesno(
+                "Confirm suggested mounting surface",
+                "EZ-FEA recognized a planar surface next to round CAD features. "
+                "It cannot know whether these are bolt holes or how the joint is restrained.\n\n"
+                "Treat the highlighted HOLD face as fully fixed for this analysis? "
+                "Click No to edit or remove the suggestion.")
+            if not confirmed:
+                self.status.set("Review suggested supports: click HOLD to remove or change.")
+                return
+            self.suggestions_review_pending=False
+            self.suggested_support_faces.clear()
+            self._sync_faces()
         self._clear_result()
         self._set_busy(True)
         self.status.set("Meshing and solving…")
