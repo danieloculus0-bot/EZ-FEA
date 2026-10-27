@@ -7,6 +7,7 @@ Hold/Load clicks return the exact OCC surface ID consumed by the solver.
 from __future__ import annotations
 
 import hashlib
+import queue
 import json
 from pathlib import Path
 import subprocess
@@ -26,6 +27,7 @@ class FacePicker(tk.Frame):
                          highlightbackground=COLOR["border"],highlightthickness=1)
         self.on_face=on_face
         self.source=None
+        self.pending=queue.Queue()
         self.epoch=0
         self.mode="fixed"
         self.fixed_tag=None
@@ -73,6 +75,16 @@ class FacePicker(tk.Frame):
                  font=("Segoe UI",9),anchor="w",justify="left",
                  wraplength=680,padx=12,pady=8).pack(fill="x")
         self._update_buttons()
+        self.after(90,self._poll_result)
+
+    def _poll_result(self):
+        try:
+            while True:
+                epoch,triangles,error=self.pending.get_nowait()
+                self._finish(epoch,triangles,error)
+        except queue.Empty:
+            pass
+        self.after(90,self._poll_result)
 
     def _update_buttons(self):
         for name,button,tag in (
@@ -136,10 +148,10 @@ class FacePicker(tk.Frame):
                                       "Surface mesh generation failed").strip()[-650:])
                 parsed=json.loads(output.read_text(encoding="utf-8"))
             tris=validate_preview(parsed,expected_sha=sha,expected_faces=faces)
-            self.after(0,lambda:self._finish(epoch,tris,None))
+            self.pending.put((epoch,tris,None))
         except Exception as exc:
             message=str(exc)
-            self.after(0,lambda:self._finish(epoch,None,message))
+            self.pending.put((epoch,None,message))
 
     def _finish(self,epoch,triangles,error):
         if epoch!=self.epoch:return
