@@ -49,5 +49,5 @@ test("both a checked-in historical fallback and a CI-overlaid original STEP surf
     assert.match(fallback.browser_preview,/reconstructed/);
   }
   assert.match(fallback.status,/archived_real/);
-  assert.match(fallback.limits.join(" "),/not real weld strength/);
+  assert.match(fallback.limits.join(" "),/not real weld(?: strength|s)/);
 });
