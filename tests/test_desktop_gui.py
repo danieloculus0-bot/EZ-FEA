@@ -43,6 +43,62 @@ class DesktopEndToEndTests(unittest.TestCase):
             self.assertNotIn("CAD face 0:",report)
 
     @patch("app.messagebox.showerror")
+    def test_actual_gui_truss_uses_fixed_and_sliding_supports(self,error_dialog):
+        # End-to-end UI controls, not the helper backend: the user sets two
+        # actual STEP support faces, frees global X on the right pad, loads
+        # the top face and runs the native child through the SOLVE button.
+        from app import App
+        from ezfea.truss_example import generate_example,select_faces
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            model=generate_example(root/"cad")
+            source=root/"cad"/model["fused"]["step"]
+            targets=select_faces(source)
+            app=App()
+            try:
+                app.update()
+                self.assertTrue(app.load_file(str(source)))
+                self.assertTrue(app._on_face_click("fixed",targets["left"]))
+                self.assertTrue(app._on_face_click("fixed",targets["right"]))
+                self.assertTrue(app._on_face_click(
+                    "fixed",targets["right"],cycle_axes=True))
+                self.assertEqual(
+                    app.support_axes[targets["left"]],(1,2,3))
+                self.assertEqual(
+                    app.support_axes[targets["right"]],(2,3))
+                self.assertTrue(app._on_face_click("loaded",targets["load"]))
+                app.force.set("1000")
+                app.mesh.set("16")
+                app.run()
+                self.assertTrue(app.busy)
+                end=time.monotonic()+130
+                while app.busy and time.monotonic()<end:
+                    app.update()
+                    time.sleep(.10)
+                app.update()
+                self.assertFalse(app.busy,"Truss did not finish native GUI analysis")
+                self.assertIsNotNone(app.latest,app.status.get())
+                self.assertEqual(app.latest["summary"]["status"],"completed")
+                record=app.latest["record"]
+                self.assertEqual(
+                    [entry["face"] for entry in record["model"]["connections"]],
+                    [targets["left"],targets["right"]])
+                self.assertEqual(
+                    [entry["axes"] for entry in record["model"]["connections"]],
+                    [[1,2,3],[2,3]])
+                self.assertEqual(record["model"]["loads"][0]["face"],targets["load"])
+                self.assertEqual(
+                    record["model"]["loads"][0]["force_n"],[0.,-1000.,0.])
+                self.assertIn(
+                    f"CAD face {targets['right']}: restrained global directions Y,Z",
+                    app.latest["report"].read_text())
+                self.assertIn("PASS",app.result_vars["force_balance"].get())
+                self.assertIn("PASS",app.result_vars["moment_balance"].get())
+                error_dialog.assert_not_called()
+            finally:
+                app.destroy()
+
+    @patch("app.messagebox.showerror")
     def test_multibody_step_rejected_at_import_not_after_solving(self,error_dialog):
         from app import App
         from ezfea.truss_example import generate_example
@@ -196,7 +252,13 @@ class DesktopEndToEndTests(unittest.TestCase):
                 self.assertIn(tag,app.support_faces)
                 self.assertIn(tag,app.picker.support_tags)
                 self.assertEqual(len(app.support_faces),2)
-                # Removing a support point is just clicking it again.
+                # Actual Shift+click changes that CAD face to sliding in X.
+                shiftevt=SimpleNamespace(x=px,y=py,state=0x0001)
+                app.picker._down(shiftevt)
+                app.picker._up(shiftevt)
+                self.assertEqual(app.support_axes[tag],(2,3))
+                self.assertIn("Slide X",app.status.get())
+                # Removing a support point is still just one ordinary click.
                 app.picker._down(evt)
                 app.picker._up(evt)
                 self.assertNotIn(tag,app.support_faces)
