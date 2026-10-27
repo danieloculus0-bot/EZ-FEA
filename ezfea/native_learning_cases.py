@@ -125,6 +125,22 @@ def _pick_end_faces(path,length):
     return fixed[0].tag,tip[0].tag
 
 
+def cantilever_reference_y_deflection_mm(force_n,length_mm,width_y_mm,height_z_mm,modulus_mpa):
+    """3D beam along X, load along Y -> bending about Z, I_z=h_z*b_y^3/12.
+
+    A nonsquare rectangular section MUST be evaluated about the actual
+    transverse load axis. Using I_y=b_y*h_z^3/12 silently teaches a false
+    bias to BEAN when the cross section is not square.
+    """
+    values=(force_n,length_mm,width_y_mm,height_z_mm,modulus_mpa)
+    if not all(type(x) in (float,int) and math.isfinite(x) for x in values):
+        raise ValueError("Nonfinite bending reference input")
+    if length_mm<=0 or width_y_mm<=0 or height_z_mm<=0 or modulus_mpa<=0:
+        raise ValueError("Positive lengths and material modulus required")
+    iz=height_z_mm*width_y_mm**3/12
+    return abs(force_n)*length_mm**3/(3*modulus_mpa*iz)
+
+
 def _native_bar_or_beam(root,record):
     family=record["family"]
     L,b,h,force,E=record["parameters"]
@@ -138,7 +154,7 @@ def _native_bar_or_beam(root,record):
         limit=2.0  # explicitly hypothetical stress-screening threshold
     else:
         applied=(0.,force,0.)
-        reference=abs(force)*L**3/(3*E*(b*h**3/12))
+        reference=cantilever_reference_y_deflection_mm(force,L,b,h,E)
         metric="tip_displacement_mm"
         limit=L/500  # explicitly hypothetical service deflection threshold
     # Use multiple independently defined interior physical probe locations
