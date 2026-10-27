@@ -1,5 +1,21 @@
 # EZ-FEA
 
+## The product rule: **the part is the interface**
+
+**FEA should understand the part and its likely construction—not make the user navigate an engineering-software maze.** Open a STEP model, see the actual geometry, make or remove assumptions by clicking the part, and press **SOLVE**. The sophistication belongs in the physics engine, **not in a forest of menus**.
+
+**Our non-negotiable UI principles:**
+
+- **Recognize common engineering intent.** Holes suggest fasteners or fixtures; planar pads suggest mounting; touching members and weldments suggest connection candidates. Use actual CAD topology and normal manufacturing/assembly practices to **propose**, never silently assert, their meaning.
+- **Start with a plausible setup.** Show likely supports, contact regions, grounded components and load locations **on the model** when the evidence supports them. Each proposed restraint or joint must remain distinguishable from a verified one.
+- **Easier to remove than to create.** Click a highlighted HOLD point to remove it. Click an unselected surface to add one. Select or change a connection directly on the geometry; don't force the operator through modal dialogs and deep menus for everyday tasks.
+- **One obvious path:** **Open part → review highlighted connections/supports → apply load → SOLVE → see stress and deformation on the model.** Keep material, mesh, detailed joint physics and face-ID overrides available, but out of the main workflow.
+- **Use clear engineering language.** Explain the weak member, excess deflection, missing restraint or uncertain joint *and why*. Flag checks the solver cannot perform. Never turn a likely bolt hole into an assumed fully fixed bolt, a touching face into a weld, or a numerical stress plot into design approval.
+
+> **Default to sensible, reversible suggestions. Keep uncertainty visible. Make the correct engineering action the easiest action.**
+
+**What exists today:** A black-and-lime desktop screen with a rotating real STEP preview, direct face clicking, multiple removable HOLD surfaces, a force/direction input, and native Gmsh/CalculiX results. Cylindrical CAD features adjoining planar surfaces can suggest mounting faces, which require confirmation before solving. **What's still being built:** reliable general multibody weldment/bolt/contact inference, richer automatic load cases, genuine weld and fastener physics, and visual stress contours directly on the model. The desktop is not yet an autonomous assembly analyst.
+
 **EZ-FEA is evolving into an assembly-aware engineering analysis system** built on genuine Gmsh meshing and CalculiX physics. The goal is to take an imported CAD assembly from **geometry → detected mates → confirmed mechanical joints → meaningful loads and restraints → independently checked structural results**, without requiring engineers to manually reconstruct every connection.
 
 EZ-FEA is part of the broader **Axiom engineering software suite**. Its future BEAN integration should explain geometric evidence, help review joints, and flag questionable assumptions; the actual structural calculations remain the responsibility of the physics engine. The [educational browser demo](https://danieloculus0-bot.github.io/EZ-FEA/) is separate from native 3D solving and must never be represented as a live arbitrary-CAD solver.
@@ -38,7 +54,7 @@ A **genuine CAD and CalculiX FEA example** now lives in this repository: [**Warr
 
 The demonstration generates a **10-solid multibody** weldment representation, plus a **separately fused single-solid STEP** that the existing solver can actually analyze. The first successful native run loaded the 600 mm span with 1,000 N, solved **3,595 quadratic C3D10 elements**, and measured **0.010811 mm maximum movement** and **10.107 MPa peak integration-point von Mises stress** with passing force/moment equilibrium. [Real native run and STEP download artifacts](https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/40473627691).
 
-The solid bars are **not hollow HSS/RHS tube**, and Boolean-united connections represent *ideally continuous material, not actual weld strength*. The truss uses **two support faces**, available in the Python multi-face backend but **not yet in the standard one-support desktop screen**. This is an end-to-end benchmark and a useful next GUI/assembly target—not an approved structural design.
+The solid bars are **not hollow HSS/RHS tube**, and Boolean-united connections represent *ideally continuous material, not actual weld strength*. The truss uses **two support faces**, now supported by the desktop's multiple-HOLD mechanics, though the ordinary one-face LOAD screen still does not infer a full truss loading scenario or welded multibody joint physics. This is an end-to-end benchmark and a useful next GUI/assembly target—not an approved structural design.
 
 ```powershell
 py -m ezfea.truss_example --solve --out runs/truss_example
