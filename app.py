@@ -36,6 +36,7 @@ class App(tk.Tk):
         self.active_run_signature=None
         self.faces=[]
         self.support_faces=[]
+        self.support_axes={}
         self.suggested_support_faces=set()
         self.suggestions_review_pending=False
         self.busy=False
@@ -273,7 +274,8 @@ class App(tk.Tk):
     def _input_signature(self):
         return (
             self.filename,self.source_sha256,
-            tuple(self.support_faces),
+            tuple((face,tuple(self.support_axes.get(face,(1,2,3))))
+                  for face in self.support_faces),
             self.load_box.current(),
             self.force.get(),self.direction.get(),
             self.mesh.get(),self.e.get(),self.nu.get(),
@@ -290,6 +292,8 @@ class App(tk.Tk):
     def _sync_faces(self):
         tags={f.tag for f in self.faces}
         self.support_faces=[tag for tag in self.support_faces if tag in tags]
+        self.support_axes={tag:tuple(self.support_axes.get(tag,(1,2,3)))
+                           for tag in self.support_faces}
         if self.support_faces:
             index=next(i for i,f in enumerate(self.faces) if f.tag==self.support_faces[0])
             self.fix_box.current(index)
@@ -303,7 +307,7 @@ class App(tk.Tk):
         count=len(self.support_faces)
         self.picker.info.set(
             f"{count} HOLD face(s). Click HOLD and any highlighted face to remove. "
-            f"{'Suggested fixture: review before solve.' if self.suggestions_review_pending else 'Click another face to add.'}"
+            f"{'Suggested fixture: review before solve.' if self.suggestions_review_pending else 'Shift+click HOLD to change Fixed / Slide X / Slide Y / Slide Z.'}"
             if count else "Click HOLD then a surface to add a support.")
 
     def _legacy_support_changed(self):
@@ -312,6 +316,7 @@ class App(tk.Tk):
             tag=self.faces[index].tag
             if tag not in self.support_faces:
                 self.support_faces=[tag]
+                self.support_axes={tag:(1,2,3)}
             self.suggested_support_faces.clear()
             self.suggestions_review_pending=False
         self._clear_result()
@@ -331,6 +336,7 @@ class App(tk.Tk):
             return
         if suggested:
             self.support_faces=suggested
+            self.support_axes={tag:(1,2,3) for tag in suggested}
             self.suggested_support_faces=set(suggested)
             self.suggestions_review_pending=True
             self._sync_faces()
@@ -338,25 +344,40 @@ class App(tk.Tk):
             self._log("Suggested ideal support at face(s) "+str(suggested)+
                       " from planar surfaces adjoining round features; real bolt/fixture NOT established.")
 
-    def _on_face_click(self,role,tag):
+    def _on_face_click(self,role,tag,*,cycle_axes=False):
         if self.busy:return False
         index=next((i for i,f in enumerate(self.faces) if f.tag==tag),None)
         if index is None:
             self.status.set("Clicked face is not in the current STEP part.")
             return False
         if role=="fixed":
-            # Toggle: adding extra supports is as easy as removing one.
+            if cycle_axes:
+                if tag not in self.support_faces:
+                    self.status.set("Add a HOLD surface first, then Shift+click it to change restraint.")
+                    return False
+                modes=((1,2,3),(2,3),(1,3),(1,2))
+                prior=tuple(self.support_axes.get(tag,(1,2,3)))
+                updated=modes[(modes.index(prior)+1)%len(modes)]
+                self.support_axes[tag]=updated
+                self.suggested_support_faces.discard(tag)
+                self.suggestions_review_pending=bool(self.suggested_support_faces)
+                self._clear_result()
+                self._sync_faces()
+                label={(1,2,3):"Fixed XYZ",(2,3):"Slide X",(1,3):"Slide Y",
+                       (1,2):"Slide Z"}[updated]
+                self.status.set(f"HOLD face {tag}: {label}. Shift+click to cycle.")
+                return True
             if tag in self.support_faces:
                 self.support_faces.remove(tag)
+                self.support_axes.pop(tag,None)
                 self.suggested_support_faces.discard(tag)
             elif self.load_box.current()==index:
                 self.status.set("Loaded face cannot also be held.")
                 return False
             else:
                 self.support_faces.append(tag)
+                self.support_axes[tag]=(1,2,3)
                 self.suggested_support_faces.discard(tag)
-            # Any manually reviewed/edit operation removes inferred status
-            # for that face. No later prompt is needed for manual additions.
             self.suggestions_review_pending=bool(self.suggested_support_faces)
             self._clear_result()
             self._sync_faces()
@@ -415,6 +436,7 @@ class App(tk.Tk):
                 right=max(range(len(self.faces)),key=lambda i:self.faces[i].center_mm[0])
                 self.fix_box.current(left)
                 self.support_faces=[self.faces[left].tag]
+                self.support_axes={self.faces[left].tag:(1,2,3)}
                 self.load_box.current(right)
                 self._sync_faces()
                 self.status.set("Example ready. Press SOLVE.")
@@ -443,6 +465,7 @@ class App(tk.Tk):
         self.source_sha256=source_sha
         self.faces=faces
         self.support_faces=[]
+        self.support_axes={}
         self.suggested_support_faces=set()
         self.suggestions_review_pending=False
         self.fixed.set("")
@@ -477,7 +500,8 @@ class App(tk.Tk):
                 )
             case=build_multi_analysis(
                 self.filename,self.faces,
-                [{"face":t,"axes":[1,2,3]} for t in self.support_faces],
+                [{"face":t,"axes":list(self.support_axes[t])}
+                 for t in self.support_faces],
                 self.load_box.current(),values)
             missing=preflight()
             if missing:raise ValueError("\n".join(missing))
