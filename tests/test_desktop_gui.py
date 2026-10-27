@@ -13,6 +13,27 @@ from unittest.mock import patch
 @unittest.skipUnless(os.environ.get("EZFEA_DESKTOP_GUI")=="1",
                      "Native Tk display and CalculiX required")
 class DesktopEndToEndTests(unittest.TestCase):
+    def test_native_desktop_worker_runs_real_two_support_truss(self):
+        # The same production subprocess used by SOLVE must respect both
+        # actual restrained planar CAD faces, not silently use only the first.
+        from ezfea.truss_example import generate_example,select_faces,analysis_case
+        from ezfea.desktop_controller import run_native_child_process
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            model=generate_example(root/"cad")
+            source=root/"cad"/model["fused"]["step"]
+            faces=select_faces(source)
+            case=analysis_case(source,faces,mesh_size_mm=16.)
+            outcome=run_native_child_process(case,root/"native_ui")
+            self.assertEqual(outcome["summary"]["status"],"completed")
+            self.assertEqual(len(case.connections),2)
+            self.assertEqual(case.connections[0].axes,(1,2,3))
+            self.assertEqual(case.connections[1].axes,(2,3))
+            self.assertIn("MPa",outcome["summary"]["max_stress"])
+            self.assertIn("PASS",outcome["summary"]["moment_balance"])
+            self.assertTrue((outcome["folder"]/"analysis.frd").is_file())
+            self.assertTrue((outcome["folder"]/"RESULTS.txt").is_file())
+
     @patch("app.messagebox.showerror")
     @patch("app.messagebox.askyesno",return_value=False)
     def test_real_drilled_plate_auto_held_plane_can_be_removed(self, confirmation,show_error):
