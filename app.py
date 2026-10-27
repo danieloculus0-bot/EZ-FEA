@@ -452,9 +452,9 @@ class App(tk.Tk):
         if self.suggestions_review_pending:
             confirmed=messagebox.askyesno(
                 "Confirm suggested mounting surface",
-                "EZ-FEA recognized a planar surface next to round CAD features. "
+                "EZ-FEA recognized planar surface(s) next to round CAD features. "
                 "It cannot know whether these are bolt holes or how the joint is restrained.\n\n"
-                "Treat the highlighted HOLD face as fully fixed for this analysis? "
+                "Treat the highlighted HOLD surfaces as fully fixed for this analysis? "
                 "Click No to edit or remove the suggestion.")
             if not confirmed:
                 self.status.set("Review suggested supports: click HOLD to remove or change.")
