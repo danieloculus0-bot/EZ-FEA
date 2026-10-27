@@ -7,6 +7,7 @@ This is single-solid linear-static FEA, NOT generic assembly/joint simulation.
 from __future__ import annotations
 
 import importlib.util
+from dataclasses import asdict
 import json
 import math
 import os
@@ -14,6 +15,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import tempfile
 
 from .core import Analysis, Material
 from .workflow import run_case
@@ -177,6 +179,63 @@ def run_desktop_case(case,output_root="runs/desktop"):
     summary=result_summary(record)
     report=save_readable_report(output,record,summary)
     return {"folder":output,"report":report,"summary":summary,"record":record}
+
+
+def run_native_child_process(case,output_root="runs/desktop"):
+    """Keep Tk responsive WITHOUT initializing Gmsh in a background thread.
+
+    The child process runs the real verified native workflow on its own main
+    thread. A returned success requires a checked response and actual report.
+    """
+    case.validate()
+    root=Path(output_root).resolve()
+    request={
+        "schema":"ezfea.desktop_request.v1",
+        "case":{
+            "step_file":str(Path(case.step_file).resolve()),
+            "fixed_face":case.fixed_face,
+            "loaded_face":case.loaded_face,
+            "force_n":list(case.force_n),
+            "mesh_size_mm":case.mesh_size_mm,
+            "material":asdict(case.material),
+            "element_type":case.element_type,
+        },
+        "output_root":str(root),
+    }
+    with tempfile.TemporaryDirectory(prefix="ezfea-worker-") as tmp:
+        input_path=Path(tmp)/"request.json"
+        output_path=Path(tmp)/"response.json"
+        input_path.write_text(json.dumps(request,allow_nan=False),encoding="utf-8")
+        try:
+            completed=subprocess.run(
+                [sys.executable,"-m","ezfea.desktop_worker",
+                 str(input_path),str(output_path)],
+                cwd=str(Path(__file__).resolve().parent.parent),
+                capture_output=True,text=True,timeout=480,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError("Native solver exceeded runtime limit; inspect generated case files.") from exc
+        if completed.returncode!=0:
+            details=(completed.stderr or completed.stdout or "native worker failed").strip()
+            raise RuntimeError("Native solver could not finish: "+details[-1800:])
+        if not output_path.is_file():
+            raise ValueError("Native worker exited without a solver result response")
+        reply=json.loads(output_path.read_text(encoding="utf-8"))
+    if (not isinstance(reply,dict) or
+        reply.get("schema")!="ezfea.desktop_response.v1"):
+        raise ValueError("Native worker returned an unknown result format")
+    folder=Path(reply.get("folder",""))
+    report=Path(reply.get("report",""))
+    if not folder.is_dir() or not report.is_file() or report.parent!=folder:
+        raise ValueError("Worker claims results, but actual solver outputs are missing")
+    source=folder/"case.json"
+    if not source.is_file():
+        raise ValueError("Native analysis evidence file is missing")
+    record=json.loads(source.read_text(encoding="utf-8"))
+    verified=result_summary(record)
+    if reply.get("summary")!=verified:
+        raise ValueError("Desktop worker summary disagrees with actual CalculiX record")
+    return {"folder":folder,"report":report,"summary":verified,"record":record}
 
 
 def open_result_folder(folder):
