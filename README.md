@@ -20,6 +20,14 @@
 
 EZ-FEA is part of the broader **Axiom engineering software suite**. Its future BEAN integration should explain geometric evidence, help review joints, and flag questionable assumptions; the actual structural calculations remain the responsibility of the physics engine. The [educational browser demo](https://danieloculus0-bot.github.io/EZ-FEA/) is separate from native 3D solving and must never be represented as a live arbitrary-CAD solver.
 
+## Featured demonstration: the real Warren truss, not the toy beam
+
+The [EZ-FEA GitHub Pages homepage](https://danieloculus0-bot.github.io/EZ-FEA/) now opens directly on our **10-member Warren steel truss**: an interactive 3D specimen with distinct fixed/sliding support conditions, the actual 1,000 N downward loading, and numerical stress/displacement/equilibrium results from a real Gmsh/CalculiX run. The page retrieves an **SHA-256-verified tessellation of the actual fused STEP** from a passing native functional-acceptance workflow and keeps the run link with the measurements. If the current CAD mesh is temporarily unavailable, the page labels its original-geometry-recipe reconstruction instead of impersonating a verified native mesh.
+
+The **[old 2D beam calculator remains available separately](https://danieloculus0-bot.github.io/EZ-FEA/beam-lab.html)** for education; it is no longer the headline example. Rotating the truss or toggling its fixture/force visibility in a static browser **does not recalculate FEA** or create a stress-color contour. New solves still run in the native desktop application.
+
+The complete published truss comes from the existing [functional-acceptance workflow](https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/functional-pass.yml), which independently validates original CAD SHA256, C3D10 mesh, solver output and support-reaction equilibrium. GitHub Pages deploys only that verified artifact. This is a **fused, perfectly continuous solid-bar** model, not validation of individual welds or hollow tube joints.
+
 ## Functional acceptance: actual CAD → real FEA → usable results
 
 The **[automated functional pass](https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/functional-pass.yml)** generates new physical STEP models and runs them through the **same child Gmsh/CalculiX process used by the desktop**, not a mock or an analytical substitute. Its current tests cover a single-part cantilever, a drilled mounting plate with CAD-derived fixture suggestions, and a 10-member Warren truss fused into one continuous solid with *two distinct restraint faces* and a 1,000 N applied load. The complete archive includes original STEP files, native solver decks/results, input hashes, readable reports, equilibrium checks, and any failure traces.
