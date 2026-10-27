@@ -45,22 +45,24 @@ class DesktopEndToEndTests(unittest.TestCase):
                 from types import SimpleNamespace
                 from ezfea.desktop_preview import face_under_cursor
                 visible=None
+                original_fixed=app.fix_box.current()
+                original_loaded=app.load_box.current()
                 for _,tag,tri in reversed(app.picker.painted):
+                    if tag==app.faces[original_loaded].tag:
+                        continue
                     px=sum(v[0] for v in tri)/3
                     py=sum(v[1] for v in tri)/3
                     if face_under_cursor(app.picker.painted,px,py)==tag:
                         visible=(tag,px,py)
                         break
-                self.assertIsNotNone(visible)
+                self.assertIsNotNone(visible,
+                    "There must be a directly clickable original CAD face other than the loaded face")
                 tag,px,py=visible
-                original_fixed=app.fix_box.current()
-                original_loaded=app.load_box.current()
-                # Select an exposed face distinct from the preset load face.
-                if tag!=app.faces[original_loaded].tag:
-                    evt=SimpleNamespace(x=px,y=py)
-                    app.picker._down(evt)
-                    app.picker._up(evt)
-                    self.assertEqual(app.faces[app.fix_box.current()].tag,tag)
+                evt=SimpleNamespace(x=px,y=py)
+                app.picker._down(evt)
+                app.picker._up(evt)
+                self.assertEqual(app.faces[app.fix_box.current()].tag,tag)
+                self.assertEqual(app.picker.fixed_tag,tag)
                 # Restore demo fixture for independent mechanical verification.
                 app.fix_box.current(original_fixed)
                 app.load_box.current(original_loaded)
