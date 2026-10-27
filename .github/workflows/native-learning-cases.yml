@@ -35,7 +35,7 @@ jobs:
           import json
           from pathlib import Path
           v=json.loads(Path("real_feasmoke/native_curriculum.json").read_text())
-          assert v["cases_executed"]==2 and v["cases_planned"]==21
+          assert v["cases_executed"]==2 and v["cases_planned"]==42
           assert v["failed_or_needs_review"]==0
           assert all(x["status"]=="measured" and x["source_step_sha256"] for x in v["cases"])
           print("Actual native sample errors:",[round(x["reference_relative_error"],5) for x in v["cases"]])
