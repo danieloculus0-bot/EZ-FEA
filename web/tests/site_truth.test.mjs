@@ -27,7 +27,7 @@ test("browser does not claim to compute structural analyses from uploaded STEP",
   assert.match(html,/continuous steel members/);
   assert.match(html,/No calculated stress-color contour/);
   assert.match(html,/weld throat rating/);
-  assert.match(main,/archived native/);
+  assert.match(main,/native CalculiX/);
   assert.match(main,/verify SHA-256/i);
 });
 test("legacy beam education is preserved off the primary homepage",()=>{
