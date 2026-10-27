@@ -7,7 +7,7 @@ on:
       - ".github/workflows/pages.yml"
   workflow_dispatch:
   workflow_run:
-    workflows: ["Frame Specimen Physics Suite"]
+    workflows: ["Frame Specimen Physics Suite", "EZ-FEA Functional Acceptance - Actual Desktop & Solver"]
     types: [completed]
 
 permissions:
@@ -38,11 +38,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
           GH_EVENT_NAME: ${{ github.event_name }}
+          TRIGGER_WORKFLOW: ${{ github.event.workflow_run.name }}
         shell: bash
         run: |
           set -euo pipefail
           runs=""
-          if [[ "$GH_EVENT_NAME" == "workflow_run" && -n "$TRIGGER_RUN_ID" ]]; then
+          if [[ "$GH_EVENT_NAME" == "workflow_run" && "$TRIGGER_WORKFLOW" == "Frame Specimen Physics Suite" && -n "$TRIGGER_RUN_ID" ]]; then
             runs="$TRIGGER_RUN_ID"
           else
             runs="$(gh run list --repo "$GITHUB_REPOSITORY" \
@@ -73,13 +74,64 @@ jobs:
             if [[ "$found" == 1 ]]; then break; fi
           done
           if [[ "$found" == 0 ]]; then
-            if [[ "$GH_EVENT_NAME" == "workflow_run" ]]; then
-              echo "::error::Native solver completed, but verified evidence was not retrieved. Refusing stale deployment."
+            if [[ "$GH_EVENT_NAME" == "workflow_run" && "$TRIGGER_WORKFLOW" == "Frame Specimen Physics Suite" ]]; then
+              echo "::error::Native frame solver completed, but verified frame evidence was not retrieved. Refusing stale deployment."
               exit 1
             fi
             echo "No published native dataset yet; keeping checked-in fallback."
           fi
           python -m json.tool web/data/frame_studies.json >/dev/null
+      - name: Overlay genuine Warren truss STEP surface and native numerical FEA evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
+          GH_EVENT_NAME: ${{ github.event_name }}
+          TRIGGER_WORKFLOW: ${{ github.event.workflow_run.name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          runs=""
+          if [[ "$GH_EVENT_NAME" == "workflow_run" && "$TRIGGER_WORKFLOW" == "EZ-FEA Functional Acceptance - Actual Desktop & Solver" && -n "$TRIGGER_RUN_ID" ]]; then
+            runs="$TRIGGER_RUN_ID"
+          else
+            runs="$(gh run list --repo "$GITHUB_REPOSITORY" \
+              --workflow "EZ-FEA Functional Acceptance - Actual Desktop & Solver" \
+              --branch main --status success --limit 8 \
+              --json databaseId --jq '.[].databaseId' || true)"
+          fi
+          found=0
+          tmpdir="$(mktemp -d)"
+          trap 'rm -rf "$tmpdir"' EXIT
+          for run in $runs; do
+            download_dir="$tmpdir/$run"
+            mkdir -p "$download_dir"
+            if gh run download "$run" --repo "$GITHUB_REPOSITORY" \
+                 --name EZFEA-real-functional-acceptance --dir "$download_dir"; then
+              source="$download_dir/real_functional_acceptance/published"
+              if [[ -f "$source/truss_demo.json" && -f "$source/warren_truss.stl" ]]; then
+                python -m scripts.verify_truss_web \
+                  "$source/truss_demo.json" "$source/warren_truss.stl" --run-id "$run"
+                cp "$source/truss_demo.json" web/data/truss_demo.json
+                cp "$source/warren_truss.stl" web/data/warren_truss.stl
+                echo "Published actual fused Warren STEP and verified native solver record from run $run"
+                found=1
+                break
+              fi
+              echo "Run $run lacks the generated published STEP and case bundle."
+            fi
+          done
+          if [[ "$found" == 0 ]]; then
+            if [[ "$GH_EVENT_NAME" == "workflow_run" && "$TRIGGER_WORKFLOW" == "EZ-FEA Functional Acceptance - Actual Desktop & Solver" ]]; then
+              echo "::error::Fresh native truss run succeeded but published CAD/data could not be verified."
+              exit 1
+            fi
+            echo "No verified native STEP surface artifact retrieved; showing read-only, source-linked historical truss values with accurately labeled reconstructed geometry."
+          fi
+      - name: Run website tests and syntax verification
+        run: |
+          node --test web/tests/*.test.mjs
+          node --check web/truss_demo.mjs
+          node --check web/truss_evidence.mjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload static app
