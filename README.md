@@ -24,6 +24,20 @@ C3D10 (10-node quadratic tetrahedra) is the new default because C3D4 can be over
 
 **Current supported use:** one **closed solid** STEP part, one fully fixed face and one uniformly loaded face, linear isotropic static physics in N/mm/MPa. Multi-face and assembly mechanics remain available as bounded native modules, **not yet through this simple desktop screen**. Peak stress and a nominal yield ratio **do not constitute design approval**; verify CAD units, fixture realism, meshing sensitivity and independent checks.
 
+## Real example: a 10-member Warren steel truss
+
+![Example truss layout with two end supports and central load](docs/examples/warren_truss_example.svg)
+
+A **genuine CAD and CalculiX FEA example** now lives in this repository: [**Warren truss: two STEP models, actual solve and full limitations**](docs/examples/WARREN_TRUSS_EXAMPLE.md).
+
+The demonstration generates a **10-solid multibody** weldment representation, plus a **separately fused single-solid STEP** that the existing solver can actually analyze. The first successful native run loaded the 600 mm span with 1,000 N, solved **3,595 quadratic C3D10 elements**, and measured **0.010811 mm maximum movement** and **10.107 MPa peak integration-point von Mises stress** with passing force/moment equilibrium. [Real native run and STEP download artifacts](https://github.com/danieloculus0-bot/EZ-FEA/actions/runs/40473627691).
+
+The solid bars are **not hollow HSS/RHS tube**, and Boolean-united connections represent *ideally continuous material, not actual weld strength*. The truss uses **two support faces**, available in the Python multi-face backend but **not yet in the standard one-support desktop screen**. This is an end-to-end benchmark and a useful next GUI/assembly target—not an approved structural design.
+
+```powershell
+py -m ezfea.truss_example --solve --out runs/truss_example
+```
+
 ## Product direction: from CAD assembly to structural model
 
 1. **Import an assembly:** retain distinct solids, component identifiers, geometry and candidate connection faces. Do not indiscriminately fuse components into one solid.
