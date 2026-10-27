@@ -71,6 +71,12 @@ python -m scripts.build_assembly_mate_evidence --out runs/mate_review
 
 Open the [Joint Matrix](https://danieloculus0-bot.github.io/EZ-FEA/joint-matrix.html), choose **Import scanned joints JSON**, and select the generated `mates.json` or `joint_matrix.json`. The workbench initially displays sample rows until you import actual evidence. For automated verification, see [Tests](https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/test.yml), [Mate Detection](https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/assembly-mate-review.yml), and [Native Contact](https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/step-contact.yml).
 
+## BEAN learns from independently held-out native FEA (October 26, 2026)
+
+**[Actual C3D10 training corpus generator](ezfea/native_learning_cases.py)** builds **42 varied STEP specimens** spanning axial tension/compression, cantilever bending and pure round-shaft torsion. Twelve specimens are designated training; thirty have physically different CAD dimensions and are reserved for testing. The generator archives every solver input/result and never substitutes idealized equations for native labels. Failed solves remain visible and block the training gate.
+
+The [**EZ-FEA smoke workflow**](https://github.com/danieloculus0-bot/EZ-FEA/actions/workflows/native-learning-cases.yml) verifies the real meshing/result path. The separate [**BEAN real-FEA learning workflow**](https://github.com/danieloculus0-bot/BEAN/actions/workflows/bean-real-fea-learning.yml) trains the existing BEAN SpongeTD learner on measured solver residuals and scores the frozen policy against unseen geometry. Check completed runs for actual scores: generating 42 definitions alone does **not** mean BEAN generalized or beat classical mechanics. No real fracture, physical test coupon, arbitrary assembly or design approval is included.
+
 ## Native circular-shaft torsion — real solver verification (October 26, 2026)
 
 **[Actual STEP/CalculiX torsion evidence](docs/NATIVE_TORSION.md)** now demonstrates consistent tangential FE loading, nearly zero net force, fixed-end reaction-torque verification and tip twist measured from real C3D10 displacements. A 4 mm mesh of 2,541 tetrahedra differed from the independent circular-shaft twist reference by **0.00291%**, with approximately **0.00000277%** torque reaction error. **General geometry, weld, bolt and assembly torque support remains experimental/unverified.**
