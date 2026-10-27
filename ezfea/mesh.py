@@ -46,12 +46,27 @@ def _faces(gmsh):
         result.append(Face(tag, center, bbox))
     return result
 
-def inspect_step(filename):
+def inspect_step(filename, *, require_single_solid=False):
+    """Read real CAD face IDs; GUI can require the supported one-solid scope.
+
+    The default remains permissive because assembly mate detection needs to
+    inspect multibody STEP files without pretending they are one connected
+    FEA domain.
+    """
     gmsh = _gmsh()
     gmsh.initialize()
     try:
         gmsh.option.setNumber("General.Terminal", 0)
         _open_step(gmsh, filename)
+        solids=gmsh.model.getEntities(3)
+        if require_single_solid and len(solids)!=1:
+            raise ValueError(
+                f"Imported STEP contains {len(solids)} separate solids. "
+                "The main EZ-FEA desktop solver currently supports ONE continuous "
+                "solid. Open a single part, or create a physically justified fused "
+                "solid for an idealized analysis; separate welds/contact are not "
+                "automatically simulated."
+            )
         return _faces(gmsh)
     finally:
         gmsh.finalize()
