@@ -175,6 +175,28 @@ def save_readable_report(folder,record,summary):
     model=record.get("model",{})
     if not isinstance(model,dict):
         raise ValueError("Native model evidence missing")
+    multi=bool(model.get("connections") or model.get("loads"))
+    if multi:
+        supports=model.get("connections")
+        forces=model.get("loads")
+        if (not isinstance(supports,list) or not supports or
+            not isinstance(forces,list) or not forces):
+            raise ValueError("Extended native report missing actual support/load definitions")
+        support_lines=[
+            f"CAD face {item['face']}: restrained global directions {','.join(
+                'XYZ'[axis-1] for axis in item['axes'])}"
+            for item in supports
+        ]
+        load_lines=[
+            f"CAD face {item['face']}: total XYZ force {item['force_n']} N"
+            for item in forces
+        ]
+        total=[sum(item["force_n"][axis] for item in forces)
+               for axis in range(3)]
+    else:
+        support_lines=[f"CAD face {model.get('fixed_face','not reported')}: X,Y,Z fixed"]
+        load_lines=[f"CAD face {model.get('loaded_face','not reported')}: total XYZ force {model.get('force_n','not reported')} N"]
+        total=model.get("force_n","not reported")
     lines=[
         "EZ-FEA | NATIVE 3D STATIC ANALYSIS",
         "="*44,
@@ -184,9 +206,11 @@ def save_readable_report(folder,record,summary):
         f"Source STEP: {record.get('source_file','not reported')}",
         f"Source SHA256: {record.get('input_sha256','not reported')}",
         f"Units: {record.get('units','N/mm/MPa')}",
-        f"Fixed CAD face: {model.get('fixed_face','not reported')}",
-        f"Loaded CAD face: {model.get('loaded_face','not reported')}",
-        f"Applied XYZ force (N): {model.get('force_n','not reported')}",
+        "ACTUAL FIXTURES",
+        *support_lines,
+        "ACTUAL DISTRIBUTED LOADS",
+        *load_lines,
+        f"Total prescribed XYZ force (N): {total}",
         f"Mesh target (mm): {model.get('mesh_size_mm','not reported')}",
         f"Elements: {summary['elements']} ({summary['element_type']})",
         f"Material: {model.get('material','not reported')}",
