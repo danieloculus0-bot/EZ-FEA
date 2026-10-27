@@ -194,7 +194,8 @@ function renderTruss(){
     el("evidenceBadge").textContent="EDITED · NOT SOLVED";
     say("Geometry updated. Rotate to inspect; save setup or export the mesh. A new native FEA solve is required.");
   }
-  el("fixtureState").textContent="Left XYZ · right YZ (Slide X)";
+  el("fixtureState").textContent=
+    "Left "+trussInputs.leftAxes+" · right "+trussInputs.rightAxes;
   el("editNotice").textContent=isRecordedTruss(trussInputs)
     ?"Original measured case. Change any input to edit the model; native results clear until the original is restored."
     :"This is a real editable 3D model, NOT a newly solved 3D FEA case. Exported STL contains intersecting bars, not a fused STEP weldment.";
@@ -213,6 +214,8 @@ function readTrussInputs(){
   const vals={
     span:value("editSpan"),rise:value("editRise"),
     chord:value("editChord"),web:value("editWeb"),load:value("editLoad"),
+    young:value("editYoung"),poisson:value("editPoisson"),yield:value("editYield"),
+    leftAxes:el("editLeftSupport").value,rightAxes:el("editRightSupport").value,
   };
   return validateTrussInputs(vals);
 }
@@ -346,9 +349,11 @@ function clickGeometry(e){
   if(id==="FUSED_CAD"){
     note("Original fused STEP surface. Its individual welds are idealized as fully continuous steel, not independently verified.");
   }else if(id==="LEFT_SUPPORT"){
-    note("Left support pad: constrained in X, Y, Z. This is an idealized fixture, not a physical bolt solve.");
+    note("Left support pad: constrained in "+trussInputs.leftAxes+
+      " (global translations). Idealized fixture, not a physical bolt solve.");
   }else if(id==="RIGHT_SUPPORT"){
-    note("Right support pad: restrained Y, Z; allowed to slide along global X.");
+    note("Right support pad: constrained in "+trussInputs.rightAxes+
+      " (global translations). Changing restraint requires a new FEA solve.");
   }else if(id==="LOAD_PAD"){
     note("Center upper pad: "+fmt(trussInputs.load)+" N downward. Loads changed in the editor require a new FEA solve.");
   }else{
@@ -446,11 +451,13 @@ function saveTruss(){
       source_step_is_unchanged:isRecordedTruss(vals),
       dimensions_mm:{span:vals.span,rise:vals.rise,chord_square:vals.chord,
                      web_square:vals.web},
+      material:{elastic_modulus_mpa:vals.young,poisson_ratio:vals.poisson,
+                nominal_yield_mpa:vals.yield},
       force_n:[0,-vals.load,0],
       members:alteredMembers(evidence.geometry,vals),
       suggested_supports:[
-        {location_mm:[0,0,0],restrained_axes:"XYZ"},
-        {location_mm:[vals.span,0,0],restrained_axes:"YZ"},
+        {location_mm:[0,0,0],restrained_axes:vals.leftAxes},
+        {location_mm:[vals.span,0,0],restrained_axes:vals.rightAxes},
       ],
       analysis_status:isRecordedTruss(vals)?"ARCHIVED_REFERENCE_ONLY":"NOT_SOLVED",
       important:"This is an editable CAD construction recipe. New dimensions/forces need a new native Gmsh/CalculiX solve. Browser STL is not a fused watertight STEP weldment."
@@ -511,7 +518,9 @@ async function loadRecordedSTL(){
 }
 function restoreTruss(){
   for(const [id,key] of [["editSpan","span"],["editRise","rise"],
-    ["editChord","chord"],["editWeb","web"],["editLoad","load"]])
+    ["editChord","chord"],["editWeb","web"],["editLoad","load"],
+    ["editYoung","young"],["editPoisson","poisson"],["editYield","yield"],
+    ["editLeftSupport","leftAxes"],["editRightSupport","rightAxes"]])
     el(id).value=DEFAULT_TRUSS[key];
   trussInputs={...DEFAULT_TRUSS};
   mode="truss";renderMode();
@@ -545,7 +554,9 @@ async function launch(){
   el("cadFileInput").addEventListener("change",e=>{
     void importPart(e.target.files?.[0]);
   });
-  for(const id of ["editSpan","editRise","editChord","editWeb","editLoad"])
+  for(const id of ["editSpan","editRise","editChord","editWeb","editLoad",
+                   "editYoung","editPoisson","editYield",
+                   "editLeftSupport","editRightSupport"])
     el(id).addEventListener("input",trussEdited);
   for(const id of ["beamLength","beamWidth","beamHeight","beamLoad","beamMaterial"])
     el(id).addEventListener("input",()=>{
