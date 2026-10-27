@@ -7,7 +7,7 @@ This is single-solid linear-static FEA, NOT generic assembly/joint simulation.
 from __future__ import annotations
 
 import importlib.util
-from dataclasses import asdict
+from dataclasses import asdict, replace
 import json
 import math
 import os
@@ -17,7 +17,7 @@ import subprocess
 import sys
 import tempfile
 
-from .core import Analysis, Material
+from .core import Analysis, Material, FaceConstraint, FaceLoad
 from .workflow import run_case
 
 
@@ -70,6 +70,45 @@ def build_analysis(path,faces,fixed_index,loaded_index,form):
             poisson_ratio=data["nu"],yield_mpa=data["yield_mpa"]),
         element_type=form["element_type"]
     )
+    case.validate()
+    return case
+
+
+def build_multi_analysis(path, faces, supports, loaded_index, form):
+    """Keep genuine multiple CAD support faces; never silently infer bolt physics.
+
+    'supports' is a nonempty list of {"face":original_OCC_ID,"axes":[1,2,3]}
+    entries. It can be seeded by planar/hole heuristics, but a human must
+    verify any inferred restraint before this function is used to solve.
+    """
+    if not isinstance(supports,list) or not supports or len(supports)>64:
+        raise ValueError("Select at least one held surface (maximum 64)")
+    if type(loaded_index) is not int or not 0<=loaded_index<len(faces):
+        raise ValueError("Select an actual loaded STEP face")
+    tags={f.tag for f in faces}
+    seen=set()
+    constraints=[]
+    for item in supports:
+        if not isinstance(item,dict) or set(item)!={"face","axes"}:
+            raise ValueError("Support requires face ID and restrained axes")
+        face=item["face"]
+        axes=item["axes"]
+        if type(face) is not int or face not in tags or face in seen:
+            raise ValueError("Support face is unknown or duplicated")
+        if not isinstance(axes,(list,tuple)):
+            raise ValueError("Support axis list is missing")
+        candidate=FaceConstraint(face,tuple(axes))
+        candidate.validate()
+        seen.add(face)
+        constraints.append(candidate)
+    if faces[loaded_index].tag in seen:
+        raise ValueError("Loaded surface cannot also be held")
+    first_index=next(i for i,f in enumerate(faces) if f.tag==constraints[0].face)
+    validated=build_analysis(path,faces,first_index,loaded_index,form)
+    case=replace(validated,
+                 fixed_face=0,loaded_face=0,force_n=(0.,0.,0.),
+                 connections=tuple(constraints),
+                 loads=(FaceLoad(faces[loaded_index].tag,validated.force_n),))
     case.validate()
     return case
 
@@ -199,6 +238,8 @@ def run_native_child_process(case,output_root="runs/desktop"):
             "mesh_size_mm":case.mesh_size_mm,
             "material":asdict(case.material),
             "element_type":case.element_type,
+            "connections":[asdict(c) for c in case.connections],
+            "loads":[asdict(load) for load in case.loads],
         },
         "output_root":str(root),
     }
