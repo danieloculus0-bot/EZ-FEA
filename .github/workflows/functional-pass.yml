@@ -1,0 +1,81 @@
+name: EZ-FEA Functional Acceptance - Actual Desktop & Solver
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "app.py"
+      - "ezfea/functional_pass.py"
+      - "ezfea/desktop_controller.py"
+      - "ezfea/desktop_worker.py"
+      - "ezfea/mesh.py"
+      - "ezfea/fixture_suggestions.py"
+      - "tests/test_desktop_gui.py"
+      - ".github/workflows/functional-pass.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  actual-functional-pass:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install the actual native solver, STEP mesher and virtual desktop
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y calculix-ccx libglu1-mesa python3-tk xvfb xauth
+          python -m pip install -r requirements.txt
+      - name: Compile functional entry points and verify source imports
+        run: |
+          python -m py_compile app.py ezfea/functional_pass.py ezfea/desktop_controller.py ezfea/desktop_worker.py ezfea/mesh.py
+      - name: Run three fresh CAD -> desktop child -> CalculiX functional scenarios
+        run: |
+          python -m ezfea.functional_pass --out real_functional_acceptance
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path("real_functional_acceptance")
+          data=json.loads((root/"functional_results.json").read_text())
+          assert data["executed"]==3 and data["passed"]==3 and data["failed"]==0
+          for row in data["results"]:
+              assert row["state"]=="passed"
+              assert row["elements"]>80
+              assert row["maximum_displacement_mm"]>0
+              assert row["maximum_von_mises_mpa"]>0
+              assert row["force_equilibrium"]==row["moment_equilibrium"]=="pass"
+          assert data["results"][1]["cylindrical_feature_count"]>=2
+          assert data["results"][2]["multibody_import_rejected"]
+          assert data["results"][2]["members"]==10
+          with open("acceptance_summary.md","w") as report:
+              report.write("# Real EZ-FEA Functional Pass\n\n")
+              report.write("| Scenario | Elements | Max movement (mm) | Peak von Mises (MPa) | Force/moment balance |\n")
+              report.write("|---|---:|---:|---:|---|\n")
+              for row in data["results"]:
+                  report.write(
+                      f"| {row['name']} | {row['elements']:,} | "
+                      f"{row['maximum_displacement_mm']:.7g} | "
+                      f"{row['maximum_von_mises_mpa']:.7g} | PASS / PASS |\n")
+              report.write("\nCAD sources, native .inp/.dat/.frd/solver.log, UI-readable reports and input checks are archived below.\n")
+              report.write("\nNot approved for structural sign-off, weld strength, physical bolts, or general multibody solves.\n")
+          PY
+          cat acceptance_summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Drive actual Tk app face selection, hole suggestion, invalid edits and solve
+        env:
+          EZFEA_DESKTOP_GUI: "1"
+        run: xvfb-run -a python -m unittest discover -s tests -p test_desktop_gui.py -v
+      - name: Archive CAD, real numerical outputs, reports and failed-case logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: EZFEA-real-functional-acceptance
+          path: |
+            real_functional_acceptance/
+            acceptance_summary.md
+          retention-days: 90
+          if-no-files-found: warn
