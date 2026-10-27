@@ -416,3 +416,78 @@ body{background:#050607}
 :root{--ink:#edf5f0;--muted:#b7c4bb;--light:#050607;--white:#121619;--navy:#090c0e;--border:#343c3e}
 .panel,.viewer-panel,.results-panel,.results-footer{background:#111519;border-color:#343c3e}
 .viewer-stage{background:radial-gradient(ellipse at 52% 48%,#1c2325,#0c1113 90%)}
+
+
+/* October 2026: minimal product-first home. All workflow typography is
+   illustrative; real simulation stays in the Python application. */
+.native-hero{margin:0;padding:clamp(42px,6vw,92px) clamp(22px,4.2vw,76px) 26px;
+  background:radial-gradient(ellipse at 83% 16%,rgba(144,255,86,.065),transparent 43%),#050607;
+  border-bottom:1px solid #26302d;color:#edf5f0}
+.native-hero-main{display:grid;grid-template-columns:minmax(0,1.06fr) minmax(310px,.86fr);
+  align-items:center;gap:clamp(35px,7vw,120px);max-width:1430px;margin:0 auto}
+.native-eyebrow{display:flex;align-items:center;gap:10px;color:#c5ff4a;font-size:12px;
+  font-weight:800;letter-spacing:2.3px;margin:0 0 22px}
+.native-signal{width:9px;height:9px;background:#c5ff4a;border-radius:50%;
+  box-shadow:0 0 16px rgba(197,255,74,.35)}
+.native-hero h1{font:800 clamp(39px,4.8vw,76px)/1.08 Manrope,sans-serif;
+  letter-spacing:-2.7px;margin:0 0 24px;max-width:810px}
+.native-hero h1 span{color:#c5ff4a}
+.native-lead{font-size:clamp(17px,1.42vw,21px);color:#b9c8bc;max-width:600px;
+  line-height:1.7;margin:0 0 27px}
+.native-lead strong{color:#f2faed}
+.native-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.native-cta,.native-secondary{min-height:52px;display:inline-flex;align-items:center;
+  justify-content:center;gap:14px;border-radius:10px;padding:14px 20px;
+  text-decoration:none;font-weight:800;font-size:14px}
+.native-cta{color:#07100b;background:#c5ff4a;border:1px solid #c5ff4a;
+  box-shadow:0 3px 20px rgba(150,255,81,.12)}
+.native-cta:hover{background:#deff89}
+.native-secondary{color:#e4f0e7;border:1px solid #505a55;background:#111518}
+.native-secondary:hover{background:#1e2622}
+.native-instruction{color:#93a59a;font-size:13px;line-height:1.6;margin:20px 0 0}
+.native-instruction code{background:#171e1b;border:1px solid #334135;border-radius:5px;
+  padding:4px 7px;color:#d7ffb7}
+.native-workflow{border:1px solid #36443c;background:#111519;
+  border-radius:20px;overflow:hidden;box-shadow:0 32px 80px rgba(0,0,0,.32)}
+.native-windowbar{display:flex;align-items:center;gap:15px;padding:16px 19px;
+  background:#161d1e;border-bottom:1px solid #343c3e;font-size:12px}
+.native-windowbar strong{font:800 17px Manrope,sans-serif;letter-spacing:-.5px}
+.native-windowbar span:last-child{margin-left:auto;color:#c5ff4a;font-weight:800;
+  letter-spacing:1px;font-size:10px}
+.native-windowdots{color:#6b7a72;letter-spacing:3px;font-size:9px}
+.native-windowcontent{padding:22px}
+.native-window-label{color:#91a79a;letter-spacing:1.7px;font-size:10px;
+  font-weight:800;display:block;margin-bottom:12px}
+.native-step{display:flex;align-items:center;gap:16px;border:1px solid #303c35;
+  border-radius:11px;padding:14px 16px;margin-bottom:9px;background:#151b1d}
+.native-step>span{font:800 12px Manrope,sans-serif;color:#b8f376}
+.native-step>strong{font-size:15px;flex:1}
+.native-step>small{font-size:12px;color:#9aada0;text-align:right}
+.native-window-result{margin-top:16px;padding:17px;border:1px solid #51734d;
+  border-radius:12px;background:#1b251a;display:flex;align-items:center;
+  flex-direction:column;gap:5px;text-align:center}
+.native-window-result span{letter-spacing:2px;color:#c5ff4a;font-size:10px;font-weight:800}
+.native-window-result strong{font:800 22px Manrope,sans-serif;color:#f2ffeb}
+.native-window-result small{color:#b2c8b5;font-size:12px}
+.native-window-caption{font-size:11px;text-align:center;margin:0;padding:0 10px 14px;
+  color:#90a399}
+.native-footnotes{border-top:1px solid #26312a;margin:clamp(36px,5vw,75px) auto 0;
+  max-width:1430px;padding:17px 0 0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:24px;color:#97ab9f;font-size:12px;line-height:1.6}
+.native-footnotes strong{color:#d9e8dc;display:block;font-size:12px;margin-bottom:2px}
+#workspace{scroll-margin-top:12px}
+.lab-title{font:800 clamp(24px,2.5vw,34px)/1.2 Manrope,sans-serif;letter-spacing:-.7px}
+@media(max-width:900px){
+  .native-hero-main{grid-template-columns:1fr;gap:35px}
+  .native-workflow{max-width:620px;width:100%}
+  .native-hero h1{letter-spacing:-1.5px}
+}
+@media(max-width:640px){
+  .native-hero{padding:48px 17px 20px}
+  .native-hero h1{font-size:clamp(36px,9vw,52px)}
+  .native-actions{align-items:stretch;flex-direction:column}
+  .native-actions a{width:100%}
+  .native-footnotes{grid-template-columns:1fr;gap:11px;margin-top:29px}
+  .native-footnotes span{border-top:1px solid #26312a;padding-top:9px}
+  .native-step>small{font-size:10px}
+}
