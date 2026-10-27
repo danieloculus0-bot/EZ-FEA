@@ -141,22 +141,34 @@ def _native_bar_or_beam(root,record):
         reference=abs(force)*L**3/(3*E*(b*h**3/12))
         metric="tip_displacement_mm"
         limit=L/500  # explicitly hypothetical service deflection threshold
-    point=(.513*L,.437*b,.573*h)
+    # Use multiple independently defined interior physical probe locations
+    # for axial stress. Mesh-element boundaries vary with geometry; accept
+    # only a point safely inside an element rather than a boundary sample.
+    candidates={
+        "mid_a":(.513*L,.437*b,.573*h),
+        "mid_b":(.487*L,.381*b,.619*h),
+        "mid_c":(.531*L,.711*b,.337*h),
+    }
     material=Material(elastic_modulus_mpa=E,poisson_ratio=.26)
     case=Analysis(str(source),a,z,applied,min(b,h)*.65,
                   material=material,element_type="C3D10")
-    folder=run_case(case,root/"native",fixed_stress_probes={"physical_midspan":point})
+    folder=run_case(case,root/"native",fixed_stress_probes=(
+        candidates if family=="axial" else None))
     raw=json.loads((folder/"case.json").read_text(encoding="utf-8"))
     if raw.get("status")!="completed":
         raise ValueError(f"Native analysis needs review: {record['case_id']}")
     metrics=raw["results"]
+    selected_probe=None
     if family=="axial":
-        probe=metrics["fixed_coordinate_stress_affine"]["probes"]["physical_midspan"]
+        reported=metrics["fixed_coordinate_stress_affine"]["probes"]
+        safe=[(name,p) for name,p in reported.items()
+              if p.get("location_quality")=="inside_element"]
+        if not safe:
+            raise ValueError("No reliable interior axial stress probe across three physical locations")
+        name,probe=safe[0]
+        selected_probe={"name":name,"coordinate_mm":list(candidates[name]),
+                        "location_quality":probe["location_quality"]}
         observed=abs(probe["tensor_mpa"][0])
-        if probe.get("location_quality") not in (None,"inside_element"):
-            # A probe near a boundary may still be archived, but never
-            # silently accepted as training-grade supervision.
-            raise ValueError("Midspan stress probe location requires review")
     else:
         observed=metrics["max_displacement_mm"]
     if metrics["force_balance_check"]!="pass" or metrics["moment_balance_check"]!="pass":
@@ -165,6 +177,7 @@ def _native_bar_or_beam(root,record):
         "target_metric":metric,"analytical_reference":reference,
         "native_measured":observed,"example_screen_limit":limit,
         "load_n":force,"youngs_mpa":E,
+        "selected_interior_probe":selected_probe,
         "geometry_mm":{"length":L,"width":b,"height":h},
         "mesh_elements":raw["mesh"]["elements"],
         "solver_force_balance_relative_error":metrics["force_balance_relative_error"],
