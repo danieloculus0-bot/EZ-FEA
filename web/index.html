@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#090e0d">
-  <meta name="description" content="EZ-FEA: straightforward physics and CAD previews. Free, experimental structural analysis tools.">
-  <title>EZ-FEA | Simple structural analysis</title>
+  <meta name="description" content="EZ-FEA desktop: real Gmsh and CalculiX structural analysis from STEP geometry, with a separate browser demo and verified native benchmarks.">
+  <title>EZ-FEA | Real 3D structural analysis</title>
   <link rel="stylesheet" href="./styles.css">
   <script type="importmap">
   {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}
@@ -13,28 +13,58 @@
   <script type="module" src="./main.mjs"></script>
 </head>
 <body>
-  <a class="skip" href="#workspace">Skip to workbench</a>
+  <a class="skip" href="#native-app">Skip to native application</a>
   <div class="shell">
     <header class="topbar">
       <a class="brand" href="./" aria-label="EZ-FEA home">
         <span class="brand-mark">EZ<span>●</span></span>
-        <span class="brand-name">EZ-FEA <small>by EZ tools</small></span>
+        <span class="brand-name">EZ-FEA <small>Native structural analysis</small></span>
       </a>
       <div class="top-actions">
-        <span class="status-chip"><span class="status-dot"></span> Browser Lab v0.2</span>
+        <span class="status-chip"><span class="status-dot"></span> Desktop beta · Real 3D solver</span>
         <a href="https://github.com/danieloculus0-bot/EZ-FEA" target="_blank" rel="noopener noreferrer" class="link">View source <span aria-hidden="true">↗</span></a>
       </div>
     </header>
     <div class="eyebrow-banner" role="note">
       <span class="shield" aria-hidden="true">i</span>
-      <span><strong>Experimental build.</strong> The beam example uses actual 2D finite-element calculations. Uploaded 3D parts are <strong>preview only</strong> until a verified 3D solver is connected. Not for engineering sign-off.</span>
+      <span><strong>Real solver available on desktop.</strong> The Python app runs native Gmsh + CalculiX for a single STEP solid. This static website has a separate beam demo and recorded 3D examples; it does <strong>not</strong> solve your uploaded CAD. Not for engineering sign-off.</span>
     </div>
+    <section class="native-hero" id="native-app" aria-labelledby="native-title">
+      <div class="native-hero-main">
+        <div>
+          <p class="native-eyebrow"><span class="native-signal" aria-hidden="true"></span> REAL CAD. REAL SOLVER.</p>
+          <h1 id="native-title">Structural analysis.<br><span>Minus the clutter.</span></h1>
+          <p class="native-lead">Open a STEP part. Select what holds it. Apply a force. <strong>Solve.</strong> See actual 3D stress and movement — without an engineering software maze.</p>
+          <div class="native-actions">
+            <a class="native-cta" href="https://github.com/danieloculus0-bot/EZ-FEA#run-the-actual-ez-fea-desktop-program" target="_blank" rel="noopener noreferrer">Get the desktop app <span aria-hidden="true">↗</span></a>
+            <a class="native-secondary" href="#workspace">Explore browser demo <span aria-hidden="true">↓</span></a>
+          </div>
+          <p class="native-instruction">Run from the repository: <code>python app.py</code> · Python, Gmsh and CalculiX required</p>
+        </div>
+        <div class="native-workflow" aria-label="Desktop workflow, for illustration only">
+          <div class="native-windowbar"><span class="native-windowdots" aria-hidden="true">● ● ●</span><strong>EZ-FEA</strong><span>NATIVE 3D</span></div>
+          <div class="native-windowcontent">
+            <span class="native-window-label">YOUR WORKFLOW</span>
+            <div class="native-step"><span>01</span><strong>Open STEP</strong><small>Real CAD faces</small></div>
+            <div class="native-step"><span>02</span><strong>Choose faces + force</strong><small>N / mm / MPa</small></div>
+            <div class="native-step"><span>03</span><strong>Solve</strong><small>Gmsh + CalculiX</small></div>
+            <div class="native-window-result"><span>RESULTS</span><strong>Stress · Movement</strong><small>Equilibrium checks + native files</small></div>
+          </div>
+          <p class="native-window-caption">Interface overview · not a live solver running in the browser</p>
+        </div>
+      </div>
+      <div class="native-footnotes">
+        <span><strong>Native today</strong> Single-solid STEP · C3D10/C3D4 · real 3D results</span>
+        <span><strong>Experimental modules</strong> Shaft torsion and reviewed two-part contact</span>
+        <span><strong>On this page</strong> Beam lab and archived native frame studies only</span>
+      </div>
+    </section>
     <main id="workspace">
       <section class="welcome">
         <div>
-          <p class="eyebrow">STRENGTH MADE SIMPLE</p>
-          <h1>What happens when you put a part under load?</h1>
-          <p>Open a part. Show where it connects. Show where it gets pushed. We'll keep the physics honest and the controls easy.</p>
+          <p class="eyebrow">INTERACTIVE BROWSER LAB · NOT THE NATIVE SOLVER</p>
+          <h2 class="lab-title">Explore how loads affect a beam.</h2>
+          <p>Try the small browser beam calculation, preview your own CAD, or inspect previously solved 3D frame results. For your own real 3D solve, use the desktop app above.</p>
         </div>
         <div class="welcome-side">
           <button type="button" id="resetDemoTop" class="button button-outline">Try the example beam</button>
@@ -202,7 +232,7 @@
         </aside>
       </div>
       <footer class="foot">
-        <span>EZ-FEA Browser Lab. Open source. No upload server or account.</span>
+        <span>EZ-FEA · Real native desktop solver · Separate browser demonstrations.</span>
         <span>Numbers matter. Assumptions matter more.</span>
       </footer>
     </main>
