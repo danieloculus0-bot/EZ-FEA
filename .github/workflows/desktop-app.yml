@@ -8,6 +8,7 @@ on:
       - "app.py"
       - "ezfea/desktop_controller.py"
       - "ezfea/desktop_worker.py"
+      - "ezfea/desktop_presentation.py"
       - "tests/test_desktop_controller.py"
       - "tests/test_desktop_gui.py"
       - ".github/workflows/desktop-app.yml"
@@ -32,6 +33,7 @@ jobs:
       - name: Validate input, report and finite numerical results without a GUI
         run: |
           python -m unittest discover -s tests -p test_desktop_controller.py -v
+          python -m unittest discover -s tests -p test_desktop_presentation.py -v
           python -m py_compile app.py ezfea/desktop_controller.py
       - name: Launch actual Tk window and click Try demo / RUN native solver
         env:
@@ -49,6 +51,8 @@ jobs:
           assert "run_desktop_case" in worker
           assert "run_case(case" in controller
           assert "self.result_vars" in source
-          assert "RUN REAL 3D ANALYSIS" in source
+          assert 'text="SOLVE"' in source
+          assert "More settings" in source
+          assert "force_components" in source
           print("Desktop invokes real Gmsh/CalculiX in a separate main-thread process.")
           PY
