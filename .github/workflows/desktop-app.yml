@@ -1,0 +1,49 @@
+name: EZ-FEA Real Desktop Application Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "app.py"
+      - "ezfea/desktop_controller.py"
+      - "tests/test_desktop_controller.py"
+      - "tests/test_desktop_gui.py"
+      - ".github/workflows/desktop-app.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  native-desktop:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install actual Tk desktop, Gmsh and CalculiX
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y python3-tk xvfb xauth calculix-ccx libglu1-mesa
+          python -m pip install -r requirements.txt
+      - name: Validate input, report and finite numerical results without a GUI
+        run: |
+          python -m unittest discover -s tests -p test_desktop_controller.py -v
+          python -m py_compile app.py ezfea/desktop_controller.py
+      - name: Launch actual Tk window and click Try demo / RUN native solver
+        env:
+          EZFEA_DESKTOP_GUI: "1"
+        run: |
+          xvfb-run -a python -m unittest discover -s tests -p test_desktop_gui.py -v
+      - name: Confirm desktop run is not the beam-only browser simulator
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          source=Path("app.py").read_text()
+          assert "run_desktop_case" in source
+          assert "self.result_vars" in source
+          assert "RUN REAL 3D ANALYSIS" in source
+          print("Desktop runs real source STEP through native workflow, not the browser demo.")
+          PY
