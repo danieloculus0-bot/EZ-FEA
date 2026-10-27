@@ -22,15 +22,18 @@ from .desktop_preview import validate_preview, projected_triangles, face_under_c
 
 
 class FacePicker(tk.Frame):
-    def __init__(self,parent,on_face):
+    def __init__(self,parent,on_face,on_hints=None):
         super().__init__(parent,bg=COLOR["panel"],
                          highlightbackground=COLOR["border"],highlightthickness=1)
         self.on_face=on_face
+        self.on_hints=on_hints
         self.source=None
         self.pending=queue.Queue()
         self.epoch=0
         self.mode="fixed"
         self.fixed_tag=None
+        self.support_tags=[]
+        self.suggested_tags=set()
         self.loaded_tag=None
         self.triangles=[]
         self.painted=[]
@@ -80,8 +83,8 @@ class FacePicker(tk.Frame):
     def _poll_result(self):
         try:
             while True:
-                epoch,triangles,error=self.pending.get_nowait()
-                self._finish(epoch,triangles,error)
+                epoch,triangles,error,hints=self.pending.get_nowait()
+                self._finish(epoch,triangles,error,hints)
         except queue.Empty:
             pass
         self.after(90,self._poll_result)
@@ -111,8 +114,10 @@ class FacePicker(tk.Frame):
         else:
             self.info.set("Preview loading · face ID fallback under More settings")
 
-    def update_selection(self,*,fixed=None,loaded=None):
-        self.fixed_tag=fixed
+    def update_selection(self,*,fixed=None,loaded=None,supports=None,suggested=None):
+        self.support_tags=list(supports) if supports is not None else ([fixed] if fixed is not None else [])
+        self.suggested_tags=set(suggested or ()) & set(self.support_tags)
+        self.fixed_tag=self.support_tags[0] if self.support_tags else None
         self.loaded_tag=loaded
         self._update_buttons()
         self.draw()
@@ -125,6 +130,8 @@ class FacePicker(tk.Frame):
         self.triangles=[]
         self.painted=[]
         self.fixed_tag=self.loaded_tag=None
+        self.support_tags=[]
+        self.suggested_tags=set()
         self.choose("fixed")
         self.info.set("Reading actual STEP surface faces…")
         self.draw()
@@ -148,19 +155,21 @@ class FacePicker(tk.Frame):
                                       "Surface mesh generation failed").strip()[-650:])
                 parsed=json.loads(output.read_text(encoding="utf-8"))
             tris=validate_preview(parsed,expected_sha=sha,expected_faces=faces)
-            self.pending.put((epoch,tris,None))
+            self.pending.put((epoch,tris,None,parsed.get("fixture_hints")))
         except Exception as exc:
             message=str(exc)
-            self.pending.put((epoch,None,message))
+            self.pending.put((epoch,None,message,None))
 
-    def _finish(self,epoch,triangles,error):
+    def _finish(self,epoch,triangles,error,hints=None):
         if epoch!=self.epoch:return
         if error:
             self.triangles=[]
             self.info.set("3D preview unavailable · use CAD face IDs under More settings")
         else:
             self.triangles=triangles
-            self.info.set("Click the face to HOLD · drag to rotate · scroll to zoom")
+            self.info.set("Click HOLD / LOAD faces · drag to rotate")
+            if hints is not None and self.on_hints is not None:
+                self.on_hints(hints)
         self.draw()
 
     def draw(self):
@@ -178,7 +187,8 @@ class FacePicker(tk.Frame):
             self.triangles,w,h,self.yaw,self.pitch,self.zoom)
         neutrals=("#34483e","#3c5148","#43594e","#4c6155","#51665b")
         for _depth,tag,vertices in self.painted:
-            shade=("#5ff39a" if tag==self.fixed_tag else
+            shade=("#81bc9a" if tag in self.suggested_tags else
+                   "#5ff39a" if tag in self.support_tags else
                    "#ffc27b" if tag==self.loaded_tag else neutrals[tag%len(neutrals)])
             coordinates=[v for pair in vertices for v in pair]
             self.canvas.create_polygon(*coordinates,
@@ -208,7 +218,9 @@ class FacePicker(tk.Frame):
         if face is not None:
             # Parent verifies mapping back to the original inspect_step list.
             if self.on_face(self.mode,face) is not False:
-                if self.mode=="fixed":self.choose("loaded")
+                # Stay in HOLD mode to place or remove additional supports.
+                # LOAD is an explicit mode, not an implicit auto-switch.
+                self.choose(self.mode)
 
     def _wheel(self,event):
         self._zoom(1.12 if event.delta>0 else 1/1.12)
