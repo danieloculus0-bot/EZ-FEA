@@ -5,7 +5,7 @@ export const DEFAULT_TRUSS=Object.freeze({
 });
 
 export function validateTrussInputs(v){
-  if(!v||Object.keys(DEFAULT_TRUSS).some(k=>!Number.isFinite(v[k])))
+  if(!v||Object.keys(DEFAULT_TRUSS).filter(k=>!k.endsWith("Axes")).some(k=>!Number.isFinite(v[k])))
     throw new Error("Enter a finite number for every truss dimension and load");
   for(const [k,min,max] of [["span",150,3000],["rise",50,1500],
                             ["chord",5,150],["web",5,150],["load",0,1000000],
