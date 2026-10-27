@@ -2,6 +2,9 @@ name: Browser Modeling Functional Smoke
 
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Deploy EZ-FEA Browser Lab"]
+    types: [completed]
   push:
     branches: [main]
     paths:
@@ -18,6 +21,7 @@ permissions:
 
 jobs:
   browser:
+    if: ${{ github.event_name != 'workflow_run' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 22
     steps:
@@ -52,6 +56,32 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ezfea-browser-modeling-functional-proof
+          path: browser-functional-proof.png
+          if-no-files-found: ignore
+          retention-days: 7
+
+  deployed-pages:
+    if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install actual Chromium browser testing
+        run: |
+          npm install --no-save --no-package-lock --no-audit --no-fund playwright@1.56.1
+          npx playwright install chromium
+      - name: Prove the deployed GitHub Pages 3D canvas truly rotates
+        env:
+          EZFEA_URL: https://danieloculus0-bot.github.io/EZ-FEA/
+        run: node scripts/browser_smoke.mjs
+      - name: Keep screenshot evidence from the real publicly deployed site
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-github-pages-rotation-proof
           path: browser-functional-proof.png
           if-no-files-found: ignore
           retention-days: 7
