@@ -39,9 +39,15 @@ test("browser refuses fabricated or imbalanced truss numbers",()=>{
   }
 });
 
-test("cached fallback is clearly labeled as a reconstructed CAD recipe",()=>{
-  assert.equal(fallback.geometry.stl_sha256,undefined);
-  assert.match(fallback.browser_preview,/reconstructed/);
+test("both a checked-in historical fallback and a CI-overlaid original STEP surface disclose their origin",()=>{
+  if(fallback.geometry.stl_sha256){
+    assert.match(fallback.geometry.stl_sha256,/^[a-f0-9]{64}$/);
+    assert.ok(fallback.geometry.stl_surface_triangle_count>=100);
+    assert.match(fallback.browser_preview,/tessellated/);
+    assert.match(fallback.source_step_sha256,/^[a-f0-9]{64}$/);
+  }else{
+    assert.match(fallback.browser_preview,/reconstructed/);
+  }
   assert.match(fallback.status,/archived_real/);
   assert.match(fallback.limits.join(" "),/not real weld strength/);
 });
