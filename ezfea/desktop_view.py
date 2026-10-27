@@ -217,9 +217,9 @@ class FacePicker(tk.Frame):
         face=face_under_cursor(self.painted,event.x,event.y)
         if face is not None:
             # Parent verifies mapping back to the original inspect_step list.
-            if self.on_face(self.mode,face) is not False:
-                # Stay in HOLD mode to place or remove additional supports.
-                # LOAD is an explicit mode, not an implicit auto-switch.
+            cycle=bool(getattr(event,"state",0) & 0x0001) and self.mode=="fixed"
+            if self.on_face(self.mode,face,cycle_axes=cycle) is not False:
+                # Stay in HOLD mode so multiple supports are easy to edit.
                 self.choose(self.mode)
 
     def _wheel(self,event):
