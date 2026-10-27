@@ -12,6 +12,7 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
 from ezfea.mesh import inspect_step
+from ezfea.desktop_view import FacePicker
 from ezfea.desktop_controller import (
     build_analysis, open_result_folder, preflight, run_native_child_process,
 )
@@ -24,8 +25,8 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("EZ-FEA | Structural Analysis")
-        self.geometry("880x760")
-        self.minsize(690,690)
+        self.geometry("1040x755")
+        self.minsize(805,650)
         self.configure(bg=C["background"])
         self.responses=queue.Queue()
         self.filename=""
@@ -142,22 +143,20 @@ class App(tk.Tk):
         ttk.Label(source,textvariable=self.part_name,style="Large.TLabel").pack(anchor="w",pady=(14,2))
         ttk.Label(source,textvariable=self.part_detail,style="PanelMuted.TLabel").pack(anchor="w")
 
-        setup=self._panel(root)
+        workspace=tk.Frame(root,bg=C["background"])
+        workspace.pack(fill="both",expand=True)
+        self.picker=FacePicker(workspace,self._on_face_click)
+        self.picker.pack(side="left",fill="both",expand=True,padx=(0,12),pady=(0,8))
+        right=tk.Frame(workspace,bg=C["background"])
+        right.pack(side="right",fill="both",expand=True)
+        setup=self._panel(right)
         title=tk.Frame(setup,bg=C["panel"])
         title.pack(fill="x",pady=(0,12))
         ttk.Label(title,text="SETUP",style="PanelTitle.TLabel").pack(side="left")
         tk.Label(title,text="1 / 2",bg=C["panel"],fg=C["muted"],
                  font=("Segoe UI",9)).pack(side="right")
-        faces=tk.Frame(setup,bg=C["panel"])
-        faces.pack(fill="x")
-        faces.columnconfigure(0,weight=1,uniform="faces")
-        faces.columnconfigure(1,weight=1,uniform="faces")
-        self._label(faces,"Held face",bold=True).grid(row=0,column=0,sticky="w",padx=(0,9))
-        self._label(faces,"Loaded face",bold=True).grid(row=0,column=1,sticky="w")
-        self.fix_box=ttk.Combobox(faces,textvariable=self.fixed,state="readonly")
-        self.fix_box.grid(row=1,column=0,sticky="ew",padx=(0,9),pady=(5,12))
-        self.load_box=ttk.Combobox(faces,textvariable=self.loaded,state="readonly")
-        self.load_box.grid(row=1,column=1,sticky="ew",pady=(5,12))
+        tk.Label(setup,text="Click the real 3D faces on the left.",bg=C["panel"],
+                 fg=C["muted"],font=("Segoe UI",9)).pack(anchor="w",pady=(0,8))
         force_row=tk.Frame(setup,bg=C["panel"])
         force_row.pack(fill="x")
         force_row.columnconfigure(0,weight=1)
@@ -170,7 +169,7 @@ class App(tk.Tk):
         ttk.Label(setup,text="Select actual CAD faces. The entire chosen face receives the force.",
                   style="PanelMuted.TLabel").pack(anchor="w",pady=(10,0))
 
-        advanced=tk.Frame(root,bg=C["background"])
+        advanced=tk.Frame(right,bg=C["background"])
         advanced.pack(fill="x",pady=(0,12))
         self.advanced_button=ttk.Button(advanced,text="More settings  ▾",
                                         style="Quiet.TButton",command=self.toggle_advanced)
@@ -195,8 +194,17 @@ class App(tk.Tk):
         ttk.Combobox(row,textvariable=self.element_type,values=("C3D10","C3D4"),
                      state="readonly",width=10).pack(side="left",padx=13)
         self._label(row,"C3D10 recommended for bending",muted=True).pack(side="left")
+        self._label(self.advanced_frame,"Face ID fallback",muted=True).pack(anchor="w",pady=(10,4))
+        fallback=tk.Frame(self.advanced_frame,bg=C["panel"])
+        fallback.pack(fill="x")
+        self.fix_box=ttk.Combobox(fallback,textvariable=self.fixed,state="readonly",width=15)
+        self.fix_box.pack(side="left",fill="x",expand=True,padx=(0,4))
+        self.load_box=ttk.Combobox(fallback,textvariable=self.loaded,state="readonly",width=15)
+        self.load_box.pack(side="left",fill="x",expand=True,padx=(4,0))
+        self.fix_box.bind("<<ComboboxSelected>>",lambda _:self._sync_faces())
+        self.load_box.bind("<<ComboboxSelected>>",lambda _:self._sync_faces())
 
-        go=tk.Frame(root,bg=C["background"])
+        go=tk.Frame(right,bg=C["background"])
         go.pack(fill="x",pady=(0,12))
         self.run_button=ttk.Button(go,text="SOLVE",style="Accent.TButton",command=self.run)
         self.run_button.pack(side="left")
@@ -204,7 +212,7 @@ class App(tk.Tk):
                  font=("Segoe UI",10),wraplength=490,justify="left",
                  anchor="w").pack(side="left",padx=16)
 
-        results=self._panel(root,pady=16)
+        results=self._panel(right,pady=13)
         row=tk.Frame(results,bg=C["panel"])
         row.pack(fill="x")
         ttk.Label(row,text="RESULTS",style="PanelTitle.TLabel").pack(side="left")
@@ -237,14 +245,38 @@ class App(tk.Tk):
         ttk.Label(results,text="Single solid · linear elastic · check fixtures, mesh and units before design use",
                   style="PanelMuted.TLabel").pack(anchor="w",pady=(13,0))
 
-        self.activity_button=ttk.Button(root,text="Activity log  ▾",style="Quiet.TButton",
+        self.activity_button=ttk.Button(right,text="Activity log  ▾",style="Quiet.TButton",
                                         command=self.toggle_activity)
         self.activity_button.pack(anchor="w")
-        self.activity_frame=tk.Frame(root,bg=C["background"])
+        self.activity_frame=tk.Frame(right,bg=C["background"])
         self.logbox=tk.Text(self.activity_frame,height=5,wrap="word",state="disabled",
                             bg=C["panel"],fg=C["muted"],insertbackground=C["text"],
                             relief="flat",padx=12,pady=9,font=("Consolas",9))
         self.logbox.pack(fill="both",expand=True)
+
+    def _sync_faces(self):
+        fixed=self.fix_box.current()
+        loaded=self.load_box.current()
+        self.picker.update_selection(
+            fixed=self.faces[fixed].tag if fixed>=0 and fixed<len(self.faces) else None,
+            loaded=self.faces[loaded].tag if loaded>=0 and loaded<len(self.faces) else None)
+
+    def _on_face_click(self,role,tag):
+        if self.busy:return False
+        index=next((i for i,f in enumerate(self.faces) if f.tag==tag),None)
+        if index is None:
+            self.status.set("CAD face ID does not match this STEP model.")
+            return False
+        selector=self.fix_box if role=="fixed" else self.load_box
+        other=self.load_box if role=="fixed" else self.fix_box
+        if other.current()==index:
+            self.status.set("Choose a different face for the load and the support.")
+            return False
+        selector.current(index)
+        self._clear_result()
+        self._sync_faces()
+        self.status.set("Face selected. Choose the other face or press SOLVE.")
+        return True
 
     def toggle_advanced(self):
         self.advanced_open=not self.advanced_open
@@ -290,6 +322,7 @@ class App(tk.Tk):
                 right=max(range(len(self.faces)),key=lambda i:self.faces[i].center_mm[0])
                 self.fix_box.current(left)
                 self.load_box.current(right)
+                self._sync_faces()
                 self.status.set("Example ready. Press SOLVE.")
                 self._log("Example: real 100 × 10 × 10 mm STEP, left fixed, 100 N down.")
         except Exception as exc:
@@ -319,6 +352,7 @@ class App(tk.Tk):
         self.load_box["values"]=[f.label for f in faces]
         self.part_name.set(Path(selected).name)
         self.part_detail.set(f"{len(faces)} CAD faces loaded  •  STEP  •  mm geometry")
+        self.picker.start_preview(self.filename,[f.tag for f in faces])
         self.status.set("Select held face and loaded face.")
         self._log(f"Imported {len(faces)} real CAD faces from {self.filename}.")
         return True
