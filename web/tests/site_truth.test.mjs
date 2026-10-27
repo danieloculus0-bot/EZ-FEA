@@ -10,7 +10,10 @@ const main=readFileSync(new URL("../truss_demo.mjs",import.meta.url),"utf8");
 test("primary homepage is the native Warren truss experiment, not the beam",()=>{
   assert.match(html,/id="workspace"/);
   assert.match(html,/10-member Warren steel truss/);
-  assert.match(html,/truss_demo\.mjs/);
+  assert.match(html,/truss_loader\.mjs/);
+  const loader=readFileSync(new URL("../truss_loader.mjs",import.meta.url),"utf8");
+  assert.match(loader,/truss_bundle\.mjs/);
+  assert.match(loader,/truss_demo\.mjs/);
   assert.match(html,/1,000 N/);
   assert.match(html,/Left fixed · right slides X/);
   assert.match(html,/id="trussCanvas"/);
