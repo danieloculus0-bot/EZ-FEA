@@ -618,3 +618,18 @@ body{background:#050607}
  .truss-import-row>*{width:100%;max-width:100%}
  .truss-editor-actions .truss-mini-button{flex:1}
 }
+
+
+/* Give rotation explicit accessible controls on desktop and touch screens. */
+.truss-camera-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.truss-camera-actions .truss-mini-button{white-space:nowrap;min-height:39px}
+#orbitAuto[aria-pressed="true"]{color:#c5ff4a;border-color:#6b9550}
+.truss-canvas>canvas{touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.truss-canvas>canvas:active{cursor:grabbing}
+.truss-angle-note{margin:0;padding:0 16px 14px;color:#b9d5c0;
+ font-size:11px;line-height:1.5;font-variant-numeric:tabular-nums}
+@media(max-width:750px){
+  .truss-camera-actions{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .truss-model-toolbar{align-items:stretch}
+  .truss-camera-actions .truss-mini-button{font-size:12px;min-height:45px}
+}
