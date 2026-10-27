@@ -11,9 +11,12 @@ on:
       - "ezfea/desktop_presentation.py"
       - "ezfea/desktop_preview.py"
       - "ezfea/desktop_view.py"
+      - "ezfea/fixture_suggestions.py"
+      - "ezfea/fixture_examples.py"
       - "tests/test_desktop_controller.py"
       - "tests/test_desktop_presentation.py"
       - "tests/test_desktop_preview.py"
+      - "tests/test_fixture_suggestions.py"
       - "tests/test_desktop_gui.py"
       - ".github/workflows/desktop-app.yml"
 
@@ -39,8 +42,9 @@ jobs:
           python -m unittest discover -s tests -p test_desktop_controller.py -v
           python -m unittest discover -s tests -p test_desktop_presentation.py -v
           python -m unittest discover -s tests -p test_desktop_preview.py -v
-          python -m py_compile app.py ezfea/desktop_controller.py ezfea/desktop_view.py ezfea/desktop_preview.py
-      - name: Launch Tk, click actual CAD faces, then run Gmsh/CalculiX
+          python -m unittest discover -s tests -p test_fixture_suggestions.py -v
+          python -m py_compile app.py ezfea/desktop_controller.py ezfea/desktop_worker.py ezfea/desktop_view.py ezfea/desktop_preview.py ezfea/fixture_suggestions.py
+      - name: Launch Tk, add and remove real STEP supports, then run CalculiX
         env:
           EZFEA_DESKTOP_GUI: "1"
         run: |
