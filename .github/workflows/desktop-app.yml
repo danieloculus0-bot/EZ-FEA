@@ -9,8 +9,11 @@ on:
       - "ezfea/desktop_controller.py"
       - "ezfea/desktop_worker.py"
       - "ezfea/desktop_presentation.py"
+      - "ezfea/desktop_preview.py"
+      - "ezfea/desktop_view.py"
       - "tests/test_desktop_controller.py"
       - "tests/test_desktop_presentation.py"
+      - "tests/test_desktop_preview.py"
       - "tests/test_desktop_gui.py"
       - ".github/workflows/desktop-app.yml"
 
@@ -35,8 +38,9 @@ jobs:
         run: |
           python -m unittest discover -s tests -p test_desktop_controller.py -v
           python -m unittest discover -s tests -p test_desktop_presentation.py -v
-          python -m py_compile app.py ezfea/desktop_controller.py
-      - name: Launch actual Tk window and click Try demo / RUN native solver
+          python -m unittest discover -s tests -p test_desktop_preview.py -v
+          python -m py_compile app.py ezfea/desktop_controller.py ezfea/desktop_view.py ezfea/desktop_preview.py
+      - name: Launch Tk, click actual CAD faces, then run Gmsh/CalculiX
         env:
           EZFEA_DESKTOP_GUI: "1"
         run: |
@@ -54,6 +58,8 @@ jobs:
           assert "self.result_vars" in source
           assert 'text="SOLVE"' in source
           assert "More settings" in source
+          assert "FacePicker" in source
+          assert "start_preview" in source
           assert "force_components" in source
           print("Desktop invokes real Gmsh/CalculiX in a separate main-thread process.")
           PY
