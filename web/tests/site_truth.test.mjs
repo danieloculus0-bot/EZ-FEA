@@ -27,9 +27,26 @@ test("browser does not claim to compute structural analyses from uploaded STEP",
   assert.match(html,/continuous steel members/);
   assert.match(html,/No calculated stress-color contour/);
   assert.match(html,/weld throat rating/);
-  assert.match(main,/native CalculiX/);
-  assert.match(main,/SHA-256 verification/i);
+  assert.match(main,/new native (?:FEA )?solve|new native Gmsh\/CalculiX solve/i);
+  assert.match(main,/crypto\.subtle\.digest\("SHA-256"/);
 });
+test("main page supports rotation, live model edits, CAD import and actual browser beam solving",()=>{
+  for(const id of ["modeTruss","modeImport","modeBeam","editSpan","editRise","editChord","editWeb","editLoad",
+                    "cadFileInput","markHold","markForce","saveCadSetup",
+                    "downloadSetup","downloadMesh","restoreTruss",
+                    "beamLength","beamWidth","beamHeight","beamLoad","beamMaterial"])
+    assert.ok(html.includes('id="'+id+'"'),"Missing functional on-page input: "+id);
+  assert.match(main,/new OrbitControls\(/);
+  assert.match(main,/function renderTruss\(/);
+  assert.match(main,/function trussEdited\(/);
+  assert.match(main,/function importPart\(/);
+  assert.match(main,/function drawBeam\(/);
+  assert.match(main,/analyzeBeam\(/);
+  assert.match(main,/resetOutput\(/);
+  assert.match(main,/STLExporter/);
+  assert.match(main,/ReadStepFile/);
+});
+
 test("legacy beam education is preserved off the primary homepage",()=>{
   assert.match(html,/href="\.\/beam-lab.html"/);
   assert.match(legacy,/id="demoBtn"/);
