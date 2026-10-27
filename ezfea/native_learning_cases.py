@@ -54,6 +54,34 @@ _SPECS={
  ],
 }
 
+# Extra *unseen geometries* make a 30-specimen held-out benchmark large
+# enough for BEAN Core's existing scored-checkpoint contract. These do not
+# enter the training corpus; no load-only duplicates masquerade as geometry
+# generalization.
+_SPECS["holdout"].extend([
+  ("axial",(65,8,10,170,190000)),
+  ("axial",(72,9,8,-290,195000)),
+  ("axial",(87,10,12,180,205000)),
+  ("axial",(98,11,9,380,185000)),
+  ("axial",(118,12,11,-125,215000)),
+  ("axial",(132,13,10,320,175000)),
+  ("axial",(145,14,12,-210,200000)),
+  ("bending",(78,9,8,95,185000)),
+  ("bending",(86,10,9,-145,200000)),
+  ("bending",(94,11,10,210,195000)),
+  ("bending",(102,12,11,-155,205000)),
+  ("bending",(112,13,12,200,180000)),
+  ("bending",(124,14,13,-115,210000)),
+  ("bending",(140,15,14,125,190000)),
+  ("torsion",(70,7.5,3900,195000,.24)),
+  ("torsion",(78,8.0,-6800,185000,.27)),
+  ("torsion",(86,9.0,7400,210000,.26)),
+  ("torsion",(98,10.0,-11000,205000,.23)),
+  ("torsion",(110,11.0,9800,195000,.25)),
+  ("torsion",(120,12.0,-17800,180000,.28)),
+  ("torsion",(140,13.0,19300,200000,.24)),
+])
+
 
 def specimens():
     seen=set()
