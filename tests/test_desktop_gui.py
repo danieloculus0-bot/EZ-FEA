@@ -1,0 +1,53 @@
+"""Exercise the actual native Tk window with real solver and no fake results.
+
+Run with an available GUI display and EZFEA_DESKTOP_GUI=1. Linux CI uses
+xvfb-run; this test invokes the normal App.demo() and App.run() controls.
+"""
+import os
+import tempfile
+import time
+from pathlib import Path
+import unittest
+
+@unittest.skipUnless(os.environ.get("EZFEA_DESKTOP_GUI")=="1",
+                     "Native Tk display and CalculiX required")
+class DesktopEndToEndTests(unittest.TestCase):
+    def test_demo_buttons_start_actual_native_solve_and_show_numerical_results(self):
+        from app import App
+        with tempfile.TemporaryDirectory() as temp:
+            old=os.getcwd()
+            os.chdir(temp)
+            app=None
+            try:
+                app=App()
+                app.update_idletasks()
+                app.demo()
+                self.assertTrue(app.filename.endswith(".step"))
+                self.assertGreaterEqual(len(app.faces),6)
+                self.assertNotEqual(app.fix_box.current(),app.load_box.current())
+                self.assertEqual(app.element_type.get(),"C3D10")
+                app.run()
+                self.assertTrue(app.busy,"RUN control did not actually start")
+                end=time.monotonic()+240
+                while app.busy and time.monotonic()<end:
+                    app.update()
+                    time.sleep(.1)
+                app.update()
+                self.assertFalse(app.busy,"Real native solve timed out")
+                self.assertIsNotNone(app.latest,"No actual solver measurements reached the UI")
+                self.assertEqual(app.latest["summary"]["status"],"completed")
+                self.assertIn("MPa",app.result_vars["max_stress"].get())
+                self.assertIn("mm",app.result_vars["max_displacement"].get())
+                self.assertIn("PASS",app.result_vars["force_balance"].get())
+                self.assertIn("PASS",app.result_vars["moment_balance"].get())
+                self.assertTrue(Path(app.latest["folder"],"analysis.frd").is_file())
+                self.assertTrue(app.latest["report"].is_file())
+                self.assertEqual(str(app.folder_button.cget("state")),"normal")
+            finally:
+                if app is not None:
+                    app.destroy()
+                os.chdir(old)
+
+
+if __name__=="__main__":
+    unittest.main()
