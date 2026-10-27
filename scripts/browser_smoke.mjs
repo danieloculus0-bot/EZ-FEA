@@ -107,10 +107,10 @@ try{
   assert.equal(await software.locator("#trussCanvas canvas").count(),0,
     "The no-GPU scenario unexpectedly created a functional WebGL canvas");
   const svg=software.locator("#trussStatic");
-  const angle=async()=>software.locator("#rotationReadout").textContent();
-  const beforeFallback=await angle();
+  const fallbackAngle=async()=>software.locator("#rotationReadout").textContent();
+  const beforeFallback=await fallbackAngle();
   await software.locator("#orbitRight").click();
-  const afterFallback=await angle();
+  const afterFallback=await fallbackAngle();
   assert.notEqual(afterFallback,beforeFallback,
     "No-WebGL viewer right rotation button failed to change actual yaw");
   const snapshot=hash(await svg.screenshot());
@@ -120,9 +120,9 @@ try{
     "No-WebGL CAD polygons did not actually rotate after pressing left");
   await software.locator("#orbitAuto").click();
   assert.equal(await software.locator("#orbitAuto").getAttribute("aria-pressed"),"true");
-  const firstAuto=await angle();
+  const firstAuto=await fallbackAngle();
   await software.waitForTimeout(800);
-  assert.notEqual(await angle(),firstAuto,
+  assert.notEqual(await fallbackAngle(),firstAuto,
     "No-WebGL auto rotation does not move the model");
   await software.locator("#orbitAuto").click();
   const bounds=await svg.boundingBox();
