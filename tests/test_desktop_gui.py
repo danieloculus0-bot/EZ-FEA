@@ -8,11 +8,13 @@ import tempfile
 import time
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 
 @unittest.skipUnless(os.environ.get("EZFEA_DESKTOP_GUI")=="1",
                      "Native Tk display and CalculiX required")
 class DesktopEndToEndTests(unittest.TestCase):
-    def test_demo_buttons_start_actual_native_solve_and_show_numerical_results(self):
+    @patch("app.messagebox.showerror")
+    def test_demo_buttons_start_actual_native_solve_and_show_numerical_results(self, error_dialog):
         from app import App
         with tempfile.TemporaryDirectory() as temp:
             old=os.getcwd()
@@ -28,13 +30,15 @@ class DesktopEndToEndTests(unittest.TestCase):
                 self.assertEqual(app.element_type.get(),"C3D10")
                 app.run()
                 self.assertTrue(app.busy,"RUN control did not actually start")
-                end=time.monotonic()+240
+                end=time.monotonic()+150
                 while app.busy and time.monotonic()<end:
                     app.update()
                     time.sleep(.1)
                 app.update()
                 self.assertFalse(app.busy,"Real native solve timed out")
-                self.assertIsNotNone(app.latest,"No actual solver measurements reached the UI")
+                self.assertIsNotNone(app.latest,
+                    f"No actual solver measurements reached the UI; status={app.status.get()}; error={error_dialog.call_args}")
+                error_dialog.assert_not_called()
                 self.assertEqual(app.latest["summary"]["status"],"completed")
                 self.assertIn("MPa",app.result_vars["max_stress"].get())
                 self.assertIn("mm",app.result_vars["max_displacement"].get())
