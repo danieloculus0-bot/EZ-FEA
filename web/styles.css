@@ -149,7 +149,7 @@ summary{cursor:pointer;font-size:13px;font-weight:800}
 }
 
 body {
-  background:radial-gradient(ellipse at 50% -15%,#141618 0%,#0d0f11 34%,#080c0a 82%);
+  background:radial-gradient(ellipse at 50% -15%,#141618 0%,#0d0f11 34%,#090b0d 82%);
   color:var(--ink);
   min-height:100vh;
 }
@@ -161,7 +161,7 @@ summary:focus-visible,.upload-area:focus-within {
   outline-offset:3px;
 }
 .topbar {
-  background:linear-gradient(180deg,#0e1012 0%,#080c0b 100%);
+  background:linear-gradient(180deg,#0e1012 0%,#090b0d 100%);
   border-bottom:1px solid #345342;
   box-shadow:0 8px 28px rgba(0,0,0,.3);
 }
@@ -415,7 +415,7 @@ html{background:#050607}
 body{background:#050607}
 :root{--ink:#edf5f0;--muted:#b7c4bb;--light:#050607;--white:#121619;--navy:#090c0e;--border:#343c3e}
 .panel,.viewer-panel,.results-panel,.results-footer{background:#111519;border-color:#343c3e}
-.viewer-stage{background:radial-gradient(ellipse at 52% 48%,#1c2325,#0c1113 90%)}
+.viewer-stage{background:radial-gradient(ellipse at 52% 48%,#1c2325,#0c0e10 90%)}
 
 
 /* October 2026: minimal product-first home. All workflow typography is
@@ -443,9 +443,9 @@ body{background:#050607}
   box-shadow:0 3px 20px rgba(150,255,81,.12)}
 .native-cta:hover{background:#deff89}
 .native-secondary{color:#e4f0e7;border:1px solid #505a55;background:#111518}
-.native-secondary:hover{background:#1e2622}
+.native-secondary:hover{background:#1e2023}
 .native-instruction{color:#93a59a;font-size:13px;line-height:1.6;margin:20px 0 0}
-.native-instruction code{background:#171e1b;border:1px solid #334135;border-radius:5px;
+.native-instruction code{background:#191b1d;border:1px solid #334135;border-radius:5px;
   padding:4px 7px;color:#d7ffb7}
 .native-workflow{border:1px solid #36443c;background:#111519;
   border-radius:20px;overflow:hidden;box-shadow:0 32px 80px rgba(0,0,0,.32)}
@@ -497,8 +497,8 @@ body{background:#050607}
    classroom calculator lives at beam-lab.html, not the homepage. */
 .truss-page{background:#050607!important;color:#e8f1ea!important}
 .truss-page .shell{background:#050607}
-.truss-page .topbar{background:#0a0e0e;border-color:#26362b}
-.truss-page .eyebrow-banner{background:#132019;color:#b5d6bf;border-bottom:1px solid #294036}
+.truss-page .topbar{background:#090b0d;border-color:#26362b}
+.truss-page .eyebrow-banner{background:#141719;color:#b5d6bf;border-bottom:1px solid #343a3d}
 .truss-page .shield{color:#c5ff4a}
 .truss-main{max-width:1530px;margin:0 auto;padding:35px clamp(14px,4vw,65px) 24px}
 .truss-intro{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(225px,.55fr);align-items:center;gap:36px;padding:34px 0 45px}
@@ -548,7 +548,7 @@ body{background:#050607}
 .truss-evidence-actions>a{font-size:11px;min-height:40px;padding:11px 13px}
 .truss-disclaimer{font-size:11px;color:#9cb5a3;line-height:1.65;margin:18px 0 0}
 .truss-assumptions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:17px}
-.truss-assumptions>div{background:#13201a;border:1px solid #2c4233;border-radius:12px;padding:16px}
+.truss-assumptions>div{background:#141719;border:1px solid #2c4233;border-radius:12px;padding:16px}
 .truss-number{color:#c5ff4a;font:800 11px Manrope,Arial,sans-serif;display:block;margin-bottom:11px}
 .truss-assumptions strong{font-size:13px;color:#e8f5eb}
 .truss-assumptions p{color:#aabfaf;line-height:1.55;font-size:12px;margin:7px 0 0}
@@ -556,8 +556,8 @@ body{background:#050607}
 .truss-after h2{font:800 30px Manrope,Arial,sans-serif;color:#effaf0;margin:0 0 13px}
 .truss-after p:not(.native-eyebrow){color:#b0c5b3;line-height:1.6;font-size:15px;margin:0}
 .truss-after-links{display:flex;flex-direction:column;gap:12px}
-.truss-after-links a{color:#ccf8b2;border:1px solid #425b41;background:#142017;border-radius:10px;padding:13px 17px;text-decoration:none;font-size:13px;font-weight:800}
-.truss-after-links a:hover{background:#213022}
+.truss-after-links a{color:#ccf8b2;border:1px solid #425b41;background:#151719;border-radius:10px;padding:13px 17px;text-decoration:none;font-size:13px;font-weight:800}
+.truss-after-links a:hover{background:#202326}
 .truss-page .foot{border-color:#28372f;color:#9cb3a3}
 @media(max-width:960px){
  .truss-columns,.truss-intro,.truss-after{grid-template-columns:1fr}
@@ -587,18 +587,18 @@ body{background:#050607}
 
 /* Real modeling controls restored on the primary workbench. */
 .truss-mode-buttons{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 14px}
-.truss-mode-button{background:#17231b;border:1px solid #405847;color:#e3f3e7;
+.truss-mode-button{background:#1a1d20;border:1px solid #405847;color:#e3f3e7;
  border-radius:10px;min-height:46px;padding:11px 19px;font-size:13px;font-weight:800}
-.truss-mode-button:hover{background:#273a2d}
+.truss-mode-button:hover{background:#25292c}
 .truss-mode-button.active,.truss-mode-button[aria-pressed="true"]{background:#c5ff4a;
  color:#091109;border-color:#c5ff4a}
-.truss-editor{background:#131e19;border:1px solid #344b3a;border-radius:13px;
+.truss-editor{background:#151719;border:1px solid #344b3a;border-radius:13px;
  padding:15px 18px;margin-bottom:16px}
 .truss-fields{display:grid;grid-template-columns:repeat(5,minmax(100px,1fr));gap:11px}
 .truss-fields label,.truss-import-row label{font-size:11px;font-weight:800;color:#d0e2d1;
  display:flex;flex-direction:column;gap:6px}
 .truss-fields input,.truss-fields select,.truss-import-row input[type="file"]{
- min-width:0;min-height:40px;background:#0a1410;color:#ecf8ee;border:1px solid #516b55;
+ min-width:0;min-height:40px;background:#0b0d0f;color:#ecf8ee;border:1px solid #516b55;
  border-radius:8px;padding:8px 11px;font-size:14px}
 .truss-fields input:focus,.truss-fields select:focus{outline:2px solid #c5ff4a;outline-offset:1px}
 .truss-editor-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:13px}
