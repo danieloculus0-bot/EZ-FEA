@@ -232,6 +232,27 @@ def save_readable_report(folder,record,summary):
     return dest
 
 
+def write_native_stress_preview(folder):
+    """Generate a real integration-point SVG when the native .dat has coordinates.
+
+    Stress output without matching coordinate records is not a valid plot.
+    Never synthesize missing positions or claim a contour was calculated.
+    """
+    from .stress_plot import stress_points, render_svg
+
+    folder=Path(folder)
+    dat=folder/"analysis.dat"
+    if not dat.is_file():
+        return None
+    try:
+        points=stress_points(dat)
+    except ValueError:
+        return None
+    target=folder/"STRESS_POINTS.svg"
+    target.write_text(render_svg(points),encoding="utf-8")
+    return target
+
+
 def run_desktop_case(case,output_root="runs/desktop"):
     """Do the native analysis and return a checked report, not a fake 'success'."""
     output=Path(run_case(case,output_root))
@@ -241,7 +262,8 @@ def run_desktop_case(case,output_root="runs/desktop"):
     record=json.loads(meta_path.read_text(encoding="utf-8"))
     summary=result_summary(record)
     report=save_readable_report(output,record,summary)
-    return {"folder":output,"report":report,"summary":summary,"record":record}
+    plot=write_native_stress_preview(output)
+    return {"folder":output,"report":report,"summary":summary,"record":record,"stress_plot":plot}
 
 
 def run_native_child_process(case,output_root="runs/desktop"):
