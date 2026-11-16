@@ -4,7 +4,7 @@ import subprocess
 import sys
 import unittest
 
-from ezfea.bolt_group_cli import calculate
+from ezfea.bolt_group_cli import calculate, calculate_cases
 
 
 class BoltGroupCliTests(unittest.TestCase):
@@ -46,6 +46,39 @@ class BoltGroupCliTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertFalse(result.stdout)
         self.assertIn("input error", result.stderr)
+
+    def test_multiple_cases_and_per_bolt_envelope(self):
+        data = calculate_cases({"positions": [[0, 0], [100, 0]], "cases": [
+            {"name": "direct", "force_x": 0, "force_y": 100},
+            {"name": "torsion", "force_x": 0, "force_y": 0, "moment_z": 10000},
+        ]})
+        self.assertEqual(len(data["cases"]), 2)
+        self.assertEqual(data["envelope"]["governing_case"], "torsion")
+        self.assertAlmostEqual(data["envelope"]["max_resultant"], 100)
+        self.assertEqual([b["governing_case"] for b in data["envelope"]["bolts"]],
+                         ["torsion", "torsion"])
+
+    def test_batch_rejects_duplicate_and_invalid_cases(self):
+        for cases in [
+            [{"name": "a", "force_x": 1, "force_y": 0},
+             {"name": "a", "force_x": 2, "force_y": 0}],
+            [{"name": "missing", "force_x": 1}],
+            [{"name": "bad", "force_x": float("nan"), "force_y": 0}],
+            [],
+        ]:
+            with self.subTest(cases=cases), self.assertRaises(ValueError):
+                calculate_cases({"positions": [[0, 0], [100, 0]], "cases": cases})
+
+    def test_batch_stdin_cli(self):
+        payload = {"positions": [[0, 0], [100, 0]], "cases": [
+            {"name": "service", "force_x": 0, "force_y": 80},
+            {"name": "reverse", "force_x": 0, "force_y": -120},
+        ]}
+        result = subprocess.run([sys.executable, "-m", "ezfea.bolt_group_cli", "-"],
+                                input=json.dumps(payload), capture_output=True,
+                                text=True, check=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)["envelope"]["governing_case"], "reverse")
 
 
 if __name__ == "__main__":
