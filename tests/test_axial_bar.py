@@ -60,3 +60,26 @@ def test_cli(tmp_path):
     result = subprocess.run([sys.executable, "-m", "ezfea.axial_bar", str(input_file)],
                             capture_output=True, text=True, check=True)
     assert json.loads(result.stdout)["displacements_m"][1] == pytest.approx(1e-6)
+
+
+def test_uniform_stiffness_and_force_scale_invariance():
+    """Uniformly scaling modulus and applied force must preserve displacement."""
+    baseline = solve(model())
+    case = model()
+    scale = 1e-26
+    case["elements"][0]["youngs_modulus_pa"] *= scale
+    case["nodal_forces_n"] = [force * scale for force in case["nodal_forces_n"]]
+    scaled = solve(case)
+    assert scaled["displacements_m"] == pytest.approx(baseline["displacements_m"])
+    assert scaled["elements"][0]["strain"] == pytest.approx(baseline["elements"][0]["strain"])
+    assert scaled["elements"][0]["axial_force_n"] == pytest.approx(
+        baseline["elements"][0]["axial_force_n"] * scale
+    )
+
+
+def test_zero_stiffness_after_underflow_is_rejected():
+    case = model()
+    case["elements"][0]["youngs_modulus_pa"] = 1e-300
+    case["elements"][0]["area_m2"] = 1e-300
+    with pytest.raises(ValueError, match="singular stiffness matrix"):
+        solve(case)
