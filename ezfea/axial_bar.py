@@ -53,7 +53,7 @@ def solve(model):
     b = [float(loads[i]) - sum(k[i][j] * value for j, value in fixed.items()) for i in free]
     for p in range(len(free)):
         pivot = max(range(p, len(free)), key=lambda row: abs(a[row][p]))
-        if abs(a[pivot][p]) <= 1e-14 * max(1.0, max(abs(v) for row in a for v in row)):
+        if abs(a[pivot][p]) <= 1e-14 * max(abs(v) for row in a for v in row):
             raise ValueError("singular stiffness matrix: insufficient constraints or ill-conditioned model")
         a[p], a[pivot] = a[pivot], a[p]
         b[p], b[pivot] = b[pivot], b[p]
