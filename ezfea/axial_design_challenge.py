@@ -3,6 +3,7 @@
 No BEAN Core connection is implied. All units SI; no employer records.
 """
 import math
+import sys
 from copy import deepcopy
 
 from ezfea.axial_bar import solve
@@ -40,7 +41,11 @@ def evaluate_axial_design(challenge, proposal):
     result = solve(model)
     max_displacement = max(abs(v) for v in result["displacements_m"])
     mass = float(density) * float(area) * model["elements"][0]["length_m"]
+    if not math.isfinite(mass) or mass <= 0:
+        raise ValueError("design mass must be finite and positive")
     feasible = max_displacement <= limit
+    # Keep the reciprocal-mass ordering without emitting Infinity for tiny masses.
+    score = min(1.0 / mass, sys.float_info.max) if feasible and mass >= 1.0 / sys.float_info.max else (sys.float_info.max if feasible else 0.0)
     return {
         "option_id": option_id,
         "feasible": feasible,
@@ -48,7 +53,7 @@ def evaluate_axial_design(challenge, proposal):
         "max_abs_displacement_m": max_displacement,
         "displacement_limit_m": float(limit),
         "force_balance_residual_n": result["force_balance_residual_n"],
-        "score": 1.0 / mass if feasible else 0.0,
+        "score": score,
         "solver": "ezfea.axial_bar.solve",
     }
 
