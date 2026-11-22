@@ -38,7 +38,7 @@ def main():
         receipt = {"ok": True, **handle_request(request)}
         output = json.dumps(receipt, sort_keys=True, allow_nan=False)
         status = 0
-    except (ValueError, TypeError, OverflowError, KeyError, ZeroDivisionError) as exc:
+    except (ValueError, TypeError, OverflowError, KeyError, ZeroDivisionError, UnicodeError) as exc:
         output = json.dumps({"ok": False, "error": str(exc)}, sort_keys=True)
         status = 2
     print(output)
