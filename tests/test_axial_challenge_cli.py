@@ -68,3 +68,14 @@ def test_bounded_input_and_invalid_model_fail_without_non_json_output():
     bad = invoke({"action": "rank", "challenge": c})
     assert bad.returncode == 2
     assert json.loads(bad.stdout)["ok"] is False
+
+
+def test_invalid_utf8_has_machine_readable_failure():
+    completed = subprocess.run(
+        [sys.executable, "-m", "ezfea.axial_challenge_cli"],
+        input=b"\xff", capture_output=True, check=False,
+    )
+    assert completed.returncode == 2
+    receipt = json.loads(completed.stdout)
+    assert receipt["ok"] is False
+    assert "utf-8" in receipt["error"].lower()
